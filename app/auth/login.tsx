@@ -1,189 +1,162 @@
 import { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  ActivityIndicator,
-  Alert,
-  StyleSheet,
+  View, Text, TextInput, TouchableOpacity,
+  KeyboardAvoidingView, Platform, ScrollView,
+  ActivityIndicator, Alert, StyleSheet,
 } from 'react-native';
-import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { signInWithGoogle, signInWithApple, signInWithMagicLink } from '@/lib/auth';
+import { router, Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { signInWithGoogle, signInWithApple, signInWithMagicLink, signInWithEmail } from '@/lib/auth';
 
 const PRIMARY = '#1E40AF';
+const APP_NAME = 'GovPass';
 
 export default function LoginScreen() {
+  const [tab, setTab] = useState<'password' | 'magic'>('password');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [socialLoading, setSocialLoading] = useState<'google' | 'apple' | null>(null);
+  const [magicSent, setMagicSent] = useState(false);
+
+  const handleSignIn = async () => {
+    if (!email || !password) { Alert.alert('Error', 'Enter email and password.'); return; }
+    setLoading(true);
+    const { error } = await signInWithEmail(email, password);
+    setLoading(false);
+    if (error) Alert.alert('Sign In Failed', error.message);
+    else router.replace('/(tabs)');
+  };
 
   const handleMagicLink = async () => {
-    if (!email || !email.includes('@')) {
-      Alert.alert('Invalid Email', 'Please enter a valid email address.');
-      return;
-    }
+    if (!email.includes('@')) { Alert.alert('Error', 'Enter a valid email.'); return; }
     setLoading(true);
     const { error } = await signInWithMagicLink(email);
     setLoading(false);
-    if (error) {
-      Alert.alert('Error', error.message);
-    } else {
-      setMagicLinkSent(true);
-    }
+    if (error) Alert.alert('Error', error.message);
+    else setMagicSent(true);
   };
 
   const handleGoogle = async () => {
     setSocialLoading('google');
     const { error } = await signInWithGoogle();
     setSocialLoading(null);
-    if (error) Alert.alert('Error', 'Failed to sign in with Google.');
+    if (error) Alert.alert('Error', 'Google sign-in failed.');
   };
 
   const handleApple = async () => {
     setSocialLoading('apple');
     const { error } = await signInWithApple();
     setSocialLoading(null);
-    if (error) Alert.alert('Error', 'Failed to sign in with Apple.');
+    if (error) Alert.alert('Error', 'Apple sign-in failed.');
   };
 
-  if (magicLinkSent) {
-    return (
-      <View style={styles.checkEmailContainer}>
-        <View style={styles.emailIconContainer}>
-          <Ionicons name="mail" size={40} color="#059669" />
-        </View>
-        <Text style={styles.checkEmailTitle}>Check Your Email</Text>
-        <Text style={styles.checkEmailBody}>
-          We sent a magic link to{'\n'}
-          <Text style={styles.emailHighlight}>{email}</Text>
-          {'\n\n'}Tap the link in your email to sign in instantly.
-        </Text>
-        <TouchableOpacity
-          onPress={() => setMagicLinkSent(false)}
-          style={styles.differentEmailBtn}
-        >
-          <Text style={styles.differentEmailText}>Use Different Email</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ flexGrow: 1 }}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.content}>
-            {/* Logo */}
-            <View style={styles.logoSection}>
-              <View style={styles.logoContainer}>
-                <Ionicons name="shield-checkmark" size={36} color={PRIMARY} />
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+          <View style={styles.header}>
+            <View style={[styles.logo, { backgroundColor: PRIMARY }]}>
+              <Ionicons name="flash" size={32} color="#fff" />
+            </View>
+            <Text style={styles.title}>{APP_NAME}</Text>
+            <Text style={styles.subtitle}>Sign in to your account</Text>
+          </View>
+
+          <TouchableOpacity style={styles.appleBtn} onPress={handleApple} disabled={socialLoading !== null}>
+            {socialLoading === 'apple'
+              ? <ActivityIndicator color="#000" />
+              : <><Ionicons name="logo-apple" size={20} color="#000" /><Text style={styles.appleBtnText}>Continue with Apple</Text></>
+            }
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.googleBtn} onPress={handleGoogle} disabled={socialLoading !== null}>
+            {socialLoading === 'google'
+              ? <ActivityIndicator color={PRIMARY} />
+              : <><Text style={styles.googleIcon}>G</Text><Text style={[styles.googleBtnText, { color: PRIMARY }]}>Continue with Google</Text></>
+            }
+          </TouchableOpacity>
+
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <View style={styles.tabRow}>
+            <TouchableOpacity
+              style={[styles.tabBtn, tab === 'password' && { borderBottomColor: PRIMARY, borderBottomWidth: 2 }]}
+              onPress={() => setTab('password')}
+            >
+              <Text style={[styles.tabText, tab === 'password' && { color: PRIMARY }]}>Password</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabBtn, tab === 'magic' && { borderBottomColor: PRIMARY, borderBottomWidth: 2 }]}
+              onPress={() => setTab('magic')}
+            >
+              <Text style={[styles.tabText, tab === 'magic' && { color: PRIMARY }]}>Magic Link</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Email address"
+            placeholderTextColor="#9CA3AF"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+
+          {tab === 'password' ? (
+            <>
+              <View style={styles.pwRow}>
+                <TextInput
+                  style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                  placeholder="Password"
+                  placeholderTextColor="#9CA3AF"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPw}
+                />
+                <TouchableOpacity onPress={() => setShowPw(v => !v)} style={styles.eyeBtn}>
+                  <Ionicons name={showPw ? 'eye-off' : 'eye'} size={20} color="#6B7280" />
+                </TouchableOpacity>
               </View>
-              <Text style={styles.logoText}>
-                Gov<Text style={{ color: PRIMARY }}>Pass</Text>
-              </Text>
-            </View>
-
-            {/* Heading */}
-            <View style={styles.headingSection}>
-              <Text style={styles.heading}>Welcome back</Text>
-              <Text style={styles.headingSubtext}>
-                Sign in to access your benefits dashboard.
-              </Text>
-            </View>
-
-            {/* Social buttons */}
-            <View style={styles.socialSection}>
+              <TouchableOpacity onPress={() => router.push('/auth/forgot-password')} style={styles.forgotRow}>
+                <Text style={[styles.forgotText, { color: PRIMARY }]}>Forgot password?</Text>
+              </TouchableOpacity>
               <TouchableOpacity
-                onPress={handleApple}
-                disabled={socialLoading !== null}
-                style={[styles.appleBtn, { opacity: socialLoading === 'apple' ? 0.7 : 1 }]}
-                activeOpacity={0.85}
+                style={[styles.primaryBtn, { backgroundColor: PRIMARY }]}
+                onPress={handleSignIn}
+                disabled={loading}
               >
-                {socialLoading === 'apple' ? (
-                  <ActivityIndicator color="#000000" size="small" />
-                ) : (
-                  <Ionicons name="logo-apple" size={20} color="#000000" />
-                )}
-                <Text style={styles.appleBtnText}>Continue with Apple</Text>
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Sign In</Text>}
               </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={handleGoogle}
-                disabled={socialLoading !== null}
-                style={[styles.googleBtn, { opacity: socialLoading === 'google' ? 0.7 : 1 }]}
-                activeOpacity={0.85}
-              >
-                {socialLoading === 'google' ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <Ionicons name="logo-google" size={20} color="#FFFFFF" />
-                )}
-                <Text style={styles.googleBtnText}>Continue with Google</Text>
-              </TouchableOpacity>
+            </>
+          ) : magicSent ? (
+            <View style={styles.magicSentBox}>
+              <Ionicons name="mail" size={40} color={PRIMARY} />
+              <Text style={styles.magicSentTitle}>Check your email</Text>
+              <Text style={styles.magicSentText}>We sent a magic link to {email}</Text>
             </View>
+          ) : (
+            <TouchableOpacity
+              style={[styles.primaryBtn, { backgroundColor: PRIMARY }]}
+              onPress={handleMagicLink}
+              disabled={loading}
+            >
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Send Magic Link</Text>}
+            </TouchableOpacity>
+          )}
 
-            {/* Divider */}
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            {/* Email */}
-            <View style={styles.emailSection}>
-              <Text style={styles.inputLabel}>Email Address</Text>
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                placeholder="you@example.com"
-                placeholderTextColor="#636366"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                style={[styles.emailInput, email ? styles.emailInputActive : null]}
-              />
-
-              <TouchableOpacity
-                onPress={handleMagicLink}
-                disabled={loading || !email}
-                style={[styles.magicLinkBtn, !email && styles.magicLinkBtnDisabled]}
-                activeOpacity={0.85}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <>
-                    <Ionicons name="mail" size={18} color={email ? '#FFFFFF' : '#636366'} />
-                    <Text style={[styles.magicLinkBtnText, !email && styles.magicLinkBtnTextDisabled]}>
-                      Send Magic Link
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
-
-            {/* Sign up */}
-            <View style={styles.signupRow}>
-              <Text style={styles.signupRowText}>Don't have an account?</Text>
-              <TouchableOpacity onPress={() => router.push('/onboarding/signup')}>
-                <Text style={styles.signupLink}>Sign up</Text>
-              </TouchableOpacity>
-            </View>
+          <View style={styles.signupRow}>
+            <Text style={styles.signupText}>Don't have an account? </Text>
+            <Link href="/auth/signup" asChild>
+              <TouchableOpacity><Text style={[styles.signupLink, { color: PRIMARY }]}>Sign Up</Text></TouchableOpacity>
+            </Link>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -192,212 +165,34 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#1C1C1E',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingVertical: 32,
-  },
-  checkEmailContainer: {
-    flex: 1,
-    backgroundColor: '#1C1C1E',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 32,
-  },
-  emailIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(5, 150, 105, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-  },
-  checkEmailTitle: {
-    fontSize: 24,
-    color: '#FFFFFF',
-    fontWeight: '700',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  checkEmailBody: {
-    fontSize: 15,
-    color: '#8E8E93',
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 32,
-  },
-  emailHighlight: {
-    color: '#1E40AF',
-    fontWeight: '600',
-  },
-  differentEmailBtn: {
-    borderWidth: 1,
-    borderColor: '#38383A',
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    borderRadius: 12,
-  },
-  differentEmailText: {
-    color: '#8E8E93',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  logoSection: {
-    alignItems: 'center',
-    marginBottom: 32,
-    marginTop: 8,
-  },
-  logoContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: 18,
-    backgroundColor: '#2C2C2E',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: PRIMARY,
-    marginBottom: 14,
-    shadowColor: PRIMARY,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  logoText: {
-    fontSize: 28,
-    color: '#FFFFFF',
-    fontWeight: '800',
-  },
-  headingSection: {
-    marginBottom: 28,
-  },
-  heading: {
-    fontSize: 26,
-    color: '#FFFFFF',
-    fontWeight: '700',
-    marginBottom: 6,
-  },
-  headingSubtext: {
-    fontSize: 15,
-    color: '#8E8E93',
-  },
-  socialSection: {
-    gap: 12,
-    marginBottom: 24,
-  },
-  appleBtn: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 15,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  appleBtnText: {
-    color: '#000000',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  googleBtn: {
-    backgroundColor: 'transparent',
-    paddingVertical: 15,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    borderWidth: 1.5,
-    borderColor: '#3A3A3C',
-  },
-  googleBtnText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 24,
-    gap: 12,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#3A3A3C',
-  },
-  dividerText: {
-    color: '#636366',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  emailSection: {
-    gap: 12,
-    marginBottom: 24,
-  },
-  inputLabel: {
-    color: '#EBEBF5',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  emailInput: {
-    backgroundColor: '#2C2C2E',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#3A3A3C',
-  },
-  emailInputActive: {
-    borderColor: PRIMARY,
-  },
-  magicLinkBtn: {
-    backgroundColor: PRIMARY,
-    paddingVertical: 15,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    shadowColor: PRIMARY,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  magicLinkBtnDisabled: {
-    backgroundColor: '#2C2C2E',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  magicLinkBtnText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  magicLinkBtnTextDisabled: {
-    color: '#636366',
-  },
-  signupRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 4,
-  },
-  signupRowText: {
-    color: '#8E8E93',
-    fontSize: 15,
-  },
-  signupLink: {
-    color: PRIMARY,
-    fontSize: 15,
-    fontWeight: '600',
-  },
+  container: { flex: 1, backgroundColor: '#fff' },
+  scroll: { padding: 24, paddingTop: 40 },
+  header: { alignItems: 'center', marginBottom: 32 },
+  logo: { width: 64, height: 64, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  title: { fontSize: 24, fontWeight: '700', color: '#111827' },
+  subtitle: { fontSize: 14, color: '#6B7280', marginTop: 4 },
+  appleBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#000', borderRadius: 12, padding: 14, marginBottom: 12 },
+  appleBtnText: { color: '#fff', fontWeight: '600', fontSize: 15 },
+  googleBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 1.5, borderColor: '#E5E7EB', borderRadius: 12, padding: 14, marginBottom: 24 },
+  googleIcon: { fontSize: 16, fontWeight: '700', color: '#4285F4' },
+  googleBtnText: { fontWeight: '600', fontSize: 15 },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: '#E5E7EB' },
+  dividerText: { color: '#9CA3AF', fontSize: 13 },
+  tabRow: { flexDirection: 'row', marginBottom: 16, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
+  tabBtn: { flex: 1, paddingVertical: 10, alignItems: 'center' },
+  tabText: { fontSize: 14, fontWeight: '600', color: '#6B7280' },
+  input: { borderWidth: 1.5, borderColor: '#E5E7EB', borderRadius: 12, padding: 14, fontSize: 15, color: '#111827', marginBottom: 12, backgroundColor: '#F9FAFB' },
+  pwRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  eyeBtn: { padding: 14 },
+  forgotRow: { alignItems: 'flex-end', marginBottom: 16 },
+  forgotText: { fontSize: 13, fontWeight: '500' },
+  primaryBtn: { borderRadius: 12, padding: 16, alignItems: 'center', marginBottom: 24 },
+  primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  magicSentBox: { alignItems: 'center', padding: 24, gap: 8 },
+  magicSentTitle: { fontSize: 18, fontWeight: '700', color: '#111827' },
+  magicSentText: { fontSize: 14, color: '#6B7280', textAlign: 'center' },
+  signupRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 8 },
+  signupText: { color: '#6B7280', fontSize: 14 },
+  signupLink: { fontSize: 14, fontWeight: '600' },
 });
