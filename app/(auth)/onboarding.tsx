@@ -1,9 +1,29 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, Pressable, Dimensions, StyleSheet, Animated, StatusBar } from 'react-native';
+import {
+  View,
+  Text,
+  Pressable,
+  TouchableOpacity,
+  ScrollView,
+  Dimensions,
+  StyleSheet,
+  Animated,
+  StatusBar,
+} from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
+
+const STORAGE_KEY = '@govpass_user_type';
+
+const PERSONALIZATION_OPTIONS = [
+  'Myself — individual benefits',
+  'My family with children',
+  'A senior parent or relative',
+  'People with disabilities',
+  'Small business owner',
+];
 
 interface Slide {
   emoji: string;
@@ -17,35 +37,35 @@ interface Slide {
 const slides: Slide[] = [
   {
     emoji: '🏛️',
-    title: 'Discover Benefits',
+    title: 'Government benefits made simple',
     description:
-      'Find every government program you qualify for — SNAP, Medicaid, housing, and 2,000+ more. AI scans in seconds.',
-    bg: '#0A0F18',
-    accentBg: '#141C2E',
-    tag: 'ELIGIBILITY SCAN',
+      'GovPass AI scans 200+ federal and state programs to find benefits you qualify for right now — most users discover 3+ programs they never knew about',
+    bg: '#0f172a',
+    accentBg: '#1e293b',
+    tag: 'BENEFITS FINDER',
   },
   {
-    emoji: '📋',
-    title: 'Apply in Minutes',
+    emoji: '🇺🇸',
+    title: 'Trusted by 89,000 Americans',
     description:
-      'Complete complex government applications with AI guidance, document scanning, and auto-filled forms.',
-    bg: '#080D14',
-    accentBg: '#111928',
-    tag: 'SMART APPLY',
+      'From SNAP to Medicare, Social Security to housing assistance, GovPass has helped users claim over $45M in government benefits they deserved',
+    bg: '#334155',
+    accentBg: '#1e3a5f',
+    tag: 'TRUSTED BY THOUSANDS',
   },
   {
-    emoji: '🔔',
-    title: 'Never Miss a Deadline',
-    description:
-      'Smart alerts keep you informed about application status, approval decisions, and renewal deadlines.',
-    bg: '#060A10',
-    accentBg: '#0E1520',
-    tag: 'SMART ALERTS',
+    emoji: '🤝',
+    title: 'Who are you looking for help?',
+    description: "GovPass personalizes its search to your situation",
+    bg: '#1e40af',
+    accentBg: '#1e3a5f',
+    tag: 'PERSONALIZE',
   },
 ];
 
 export default function Onboarding() {
   const [current, setCurrent] = useState(0);
+  const [selectedType, setSelectedType] = useState<string | null>(null);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -91,6 +111,9 @@ export default function Onboarding() {
     if (current < slides.length - 1) {
       animateTransition(current + 1);
     } else {
+      if (selectedType) {
+        await AsyncStorage.setItem(STORAGE_KEY, selectedType);
+      }
       await AsyncStorage.setItem('onboarding_completed', 'true');
       router.replace('/(auth)/login');
     }
@@ -103,6 +126,7 @@ export default function Onboarding() {
 
   const slide = slides[current];
   const isLast = current === slides.length - 1;
+  const canProceed = !isLast || selectedType !== null;
 
   const progressWidth = progressAnim.interpolate({
     inputRange: [0, 1],
@@ -132,6 +156,31 @@ export default function Onboarding() {
         </View>
         <Text style={styles.title}>{slide.title}</Text>
         <Text style={styles.description}>{slide.description}</Text>
+
+        {isLast && (
+          <ScrollView
+            style={styles.optionsScroll}
+            contentContainerStyle={styles.optionsContainer}
+            showsVerticalScrollIndicator={false}
+          >
+            {PERSONALIZATION_OPTIONS.map((option) => {
+              const isSelected = selectedType === option;
+              return (
+                <TouchableOpacity
+                  key={option}
+                  style={[styles.optionChip, isSelected && styles.optionChipSelected]}
+                  onPress={() => setSelectedType(option)}
+                  activeOpacity={0.8}
+                >
+                  {isSelected && <Text style={styles.optionCheck}>✓ </Text>}
+                  <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
+                    {option}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
       </Animated.View>
       <View style={styles.dots}>
         {slides.map((_, i) => (
@@ -153,8 +202,12 @@ export default function Onboarding() {
         ]}
       >
         <Pressable
-          style={[styles.button, isLast && { backgroundColor: 'rgba(255,255,255,0.95)' }]}
+          style={[
+            styles.button,
+            isLast && { backgroundColor: canProceed ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.3)' },
+          ]}
           onPress={handleNext}
+          disabled={!canProceed}
           onPressIn={() =>
             Animated.spring(scaleAnim, {
               toValue: 0.97,
@@ -172,7 +225,7 @@ export default function Onboarding() {
             }).start()
           }
         >
-          <Text style={[styles.buttonText, isLast && { color: slide.bg }]}>
+          <Text style={[styles.buttonText, isLast && canProceed && { color: slide.bg }]}>
             {isLast ? '🚀  Get Started' : 'Continue →'}
           </Text>
         </Pressable>
@@ -257,6 +310,42 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 26,
     maxWidth: 320,
+  },
+  optionsScroll: {
+    width: '100%',
+    marginTop: 24,
+    maxHeight: 260,
+  },
+  optionsContainer: {
+    gap: 10,
+    paddingBottom: 8,
+  },
+  optionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.25)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  optionChipSelected: {
+    borderColor: 'rgba(255,255,255,0.9)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  optionCheck: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  optionText: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  optionTextSelected: {
+    color: '#fff',
   },
   dots: {
     flexDirection: 'row',

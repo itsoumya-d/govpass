@@ -1,0 +1,131 @@
+{
+  "tabs": {
+    "home": "ホーム",
+    "benefits": "給付金",
+    "forms": "フォーム",
+    "programs": "プログラム",
+    "settings": "設定"
+  },
+  "home": {
+    "title": "GovPass",
+    "benefitsFound": "見つかった給付金",
+    "estimatedValue": "推定年間価値",
+    "deadlines": "近づく締切",
+    "recentChecks": "最近の確認",
+    "checkBenefits": "給付金を確認する",
+    "noActivity": "まだアクティビティなし"
+  },
+  "benefits": {
+    "title": "私の給付金",
+    "qualified": "対象です",
+    "check": "資格を確認",
+    "snap": "SNAP食料支援",
+    "medicaid": "メディケイド",
+    "medicare": "メディケア",
+    "socialSecurity": "社会保障",
+    "housing": "住宅支援",
+    "childcare": "保育支援",
+    "unemployment": "失業給付",
+    "disability": "障害給付",
+    "annualValue": "年間価値",
+    "howToApply": "申請方法",
+    "deadline": "申請締切",
+    "noBenefits": "プロフィールに合う給付金が見つかりません"
+  },
+  "forms": {
+    "title": "政府フォーム",
+    "search": "フォームを検索...",
+    "recent": "最近使用",
+    "popular": "人気のフォーム",
+    "fill": "AIでフォームを記入",
+    "download": "ダウンロード",
+    "instructions": "説明",
+    "noForms": "まだフォームなし",
+    "startFilling": "フォームを検索して始めましょう"
+  },
+  "programs": {
+    "title": "政府プログラム",
+    "federal": "連邦プログラム",
+    "state": "州プログラム",
+    "local": "地域プログラム",
+    "search": "プログラムを検索...",
+    "category": "カテゴリ",
+    "eligibility": "資格",
+    "howToApply": "申請方法",
+    "contactInfo": "連絡先情報"
+  },
+  "settings": {
+    "title": "設定",
+    "account": "アカウント",
+    "profile": "プロフィール編集",
+    "household": "世帯情報",
+    "subscription": "サブスクリプション",
+    "notifications": "通知",
+    "language": "言語",
+    "state": "お住まいの州",
+    "privacy": "プライバシーポリシー",
+    "terms": "利用規約",
+    "support": "ヘルプとサポート",
+    "rateApp": "GovPassを評価",
+    "signOut": "サインアウト",
+    "deleteAccount": "アカウント削除",
+    "version": "バージョン"
+  },
+  "auth": {
+    "welcome": "給付金を見つける",
+    "tagline": "AI搭載の政府サービスガイド",
+    "signIn": "サインイン",
+    "signUp": "アカウント作成",
+    "email": "メールアドレス",
+    "password": "パスワード",
+    "forgotPassword": "パスワードを忘れた方はこちら",
+    "continueWithGoogle": "Googleで続ける",
+    "continueWithApple": "Appleで続ける"
+  },
+  "onboarding": {
+    "slide1Title": "政府給付金をシンプルに",
+    "slide1Sub": "AIが200以上のプログラムをスキャンし、今すぐ受け取れる給付金を見つけます",
+    "slide2Title": "89,000人のアメリカ人が信頼",
+    "slide2Sub": "GovPassユーザーは4,500万ドル以上の政府給付金を受け取りました",
+    "slide3Title": "誰のために支援を探していますか？",
+    "slide3Sub": "GovPassはあなたの状況に合わせて検索をカスタマイズします",
+    "skip": "スキップ",
+    "next": "次へ",
+    "getStarted": "始める"
+  },
+  "paywall": {
+    "title": "すべての給付金を解除",
+    "subtitle": "資格があるすべてのプログラムを見つける",
+    "monthly": "月払い",
+    "annual": "年払い",
+    "perMonth": "/月",
+    "perYear": "/年",
+    "startTrial": "無料トライアルを開始",
+    "restore": "購入を復元",
+    "cancel": "いつでもキャンセル可能"
+  },
+  "common": {
+    "save": "保存",
+    "cancel": "キャンセル",
+    "delete": "削除",
+    "edit": "編集",
+    "loading": "読み込み中...",
+    "error": "エラーが発生しました",
+    "search": "検索",
+    "back": "戻る",
+    "close": "閉じる"
+  },
+  "language": {
+    "selectLanguage": "言語を選択",
+    "en": "English",
+    "es": "Español",
+    "hi": "हिन्दी",
+    "zh": "中文",
+    "ar": "العربية",
+    "pt": "Português",
+    "fr": "Français",
+    "de": "Deutsch",
+    "ja": "日本語",
+    "ko": "한국어"
+  }
+}

@@ -1,0 +1,131 @@
+{
+  "tabs": {
+    "home": "首页",
+    "benefits": "福利",
+    "forms": "表格",
+    "programs": "项目",
+    "settings": "设置"
+  },
+  "home": {
+    "title": "GovPass",
+    "benefitsFound": "找到的福利",
+    "estimatedValue": "预计年度价值",
+    "deadlines": "即将到来的截止日期",
+    "recentChecks": "最近检查",
+    "checkBenefits": "查看我的福利",
+    "noActivity": "暂无活动"
+  },
+  "benefits": {
+    "title": "我的福利",
+    "qualified": "您符合资格",
+    "check": "检查资格",
+    "snap": "SNAP食品援助",
+    "medicaid": "医疗补助",
+    "medicare": "医疗保险",
+    "socialSecurity": "社会保障",
+    "housing": "住房援助",
+    "childcare": "儿童保育援助",
+    "unemployment": "失业救济",
+    "disability": "残疾福利",
+    "annualValue": "年度价值",
+    "howToApply": "如何申请",
+    "deadline": "申请截止日期",
+    "noBenefits": "未找到适合您个人资料的福利"
+  },
+  "forms": {
+    "title": "政府表格",
+    "search": "搜索表格...",
+    "recent": "最近使用",
+    "popular": "最受欢迎",
+    "fill": "用AI填写表格",
+    "download": "下载",
+    "instructions": "说明",
+    "noForms": "暂无表格",
+    "startFilling": "搜索表格以开始"
+  },
+  "programs": {
+    "title": "政府项目",
+    "federal": "联邦项目",
+    "state": "州项目",
+    "local": "地方项目",
+    "search": "搜索项目...",
+    "category": "类别",
+    "eligibility": "资格",
+    "howToApply": "如何申请",
+    "contactInfo": "联系信息"
+  },
+  "settings": {
+    "title": "设置",
+    "account": "账户",
+    "profile": "编辑个人资料",
+    "household": "家庭信息",
+    "subscription": "订阅",
+    "notifications": "通知",
+    "language": "语言",
+    "state": "您的州",
+    "privacy": "隐私政策",
+    "terms": "服务条款",
+    "support": "帮助与支持",
+    "rateApp": "评价GovPass",
+    "signOut": "退出登录",
+    "deleteAccount": "删除账户",
+    "version": "版本"
+  },
+  "auth": {
+    "welcome": "找到您的福利",
+    "tagline": "AI驱动的政府服务指南",
+    "signIn": "登录",
+    "signUp": "创建账户",
+    "email": "电子邮件",
+    "password": "密码",
+    "forgotPassword": "忘记密码？",
+    "continueWithGoogle": "使用Google继续",
+    "continueWithApple": "使用Apple继续"
+  },
+  "onboarding": {
+    "slide1Title": "让政府福利变得简单",
+    "slide1Sub": "AI扫描200多个项目，找到您现在有资格获得的福利",
+    "slide2Title": "89,000名美国人的信赖",
+    "slide2Sub": "GovPass用户已申领超过4500万美元的政府福利",
+    "slide3Title": "您在为谁寻求帮助？",
+    "slide3Sub": "GovPass根据您的情况个性化搜索",
+    "skip": "跳过",
+    "next": "下一步",
+    "getStarted": "开始使用"
+  },
+  "paywall": {
+    "title": "解锁所有福利",
+    "subtitle": "找到您有资格获得的每个项目",
+    "monthly": "月付",
+    "annual": "年付",
+    "perMonth": "/月",
+    "perYear": "/年",
+    "startTrial": "开始免费试用",
+    "restore": "恢复购买",
+    "cancel": "随时取消"
+  },
+  "common": {
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除",
+    "edit": "编辑",
+    "loading": "加载中...",
+    "error": "出错了",
+    "search": "搜索",
+    "back": "返回",
+    "close": "关闭"
+  },
+  "language": {
+    "selectLanguage": "选择语言",
+    "en": "English",
+    "es": "Español",
+    "hi": "हिन्दी",
+    "zh": "中文",
+    "ar": "العربية",
+    "pt": "Português",
+    "fr": "Français",
+    "de": "Deutsch",
+    "ja": "日本語",
+    "ko": "한국어"
+  }
+}

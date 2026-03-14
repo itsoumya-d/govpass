@@ -1,0 +1,131 @@
+{
+  "tabs": {
+    "home": "होम",
+    "benefits": "लाभ",
+    "forms": "फॉर्म",
+    "programs": "कार्यक्रम",
+    "settings": "सेटिंग्स"
+  },
+  "home": {
+    "title": "GovPass",
+    "benefitsFound": "मिले लाभ",
+    "estimatedValue": "अनुमानित वार्षिक मूल्य",
+    "deadlines": "आगामी समय-सीमाएं",
+    "recentChecks": "हाल की जांच",
+    "checkBenefits": "मेरे लाभ जांचें",
+    "noActivity": "अभी कोई गतिविधि नहीं"
+  },
+  "benefits": {
+    "title": "मेरे लाभ",
+    "qualified": "आप योग्य हैं",
+    "check": "पात्रता जांचें",
+    "snap": "SNAP खाद्य सहायता",
+    "medicaid": "Medicaid",
+    "medicare": "Medicare",
+    "socialSecurity": "सामाजिक सुरक्षा",
+    "housing": "आवास सहायता",
+    "childcare": "बाल देखभाल सहायता",
+    "unemployment": "बेरोजगारी",
+    "disability": "विकलांगता लाभ",
+    "annualValue": "वार्षिक मूल्य",
+    "howToApply": "आवेदन कैसे करें",
+    "deadline": "आवेदन की अंतिम तिथि",
+    "noBenefits": "आपकी प्रोफ़ाइल के लिए कोई लाभ नहीं मिला"
+  },
+  "forms": {
+    "title": "सरकारी फॉर्म",
+    "search": "फॉर्म खोजें...",
+    "recent": "हाल ही में उपयोग किए",
+    "popular": "सबसे लोकप्रिय",
+    "fill": "AI से फॉर्म भरें",
+    "download": "डाउनलोड",
+    "instructions": "निर्देश",
+    "noForms": "अभी कोई फॉर्म नहीं",
+    "startFilling": "शुरू करने के लिए एक फॉर्म खोजें"
+  },
+  "programs": {
+    "title": "सरकारी कार्यक्रम",
+    "federal": "केंद्रीय कार्यक्रम",
+    "state": "राज्य कार्यक्रम",
+    "local": "स्थानीय कार्यक्रम",
+    "search": "कार्यक्रम खोजें...",
+    "category": "श्रेणी",
+    "eligibility": "पात्रता",
+    "howToApply": "आवेदन कैसे करें",
+    "contactInfo": "संपर्क जानकारी"
+  },
+  "settings": {
+    "title": "सेटिंग्स",
+    "account": "खाता",
+    "profile": "प्रोफ़ाइल संपादित करें",
+    "household": "घरेलू जानकारी",
+    "subscription": "सदस्यता",
+    "notifications": "सूचनाएं",
+    "language": "भाषा",
+    "state": "आपका राज्य",
+    "privacy": "गोपनीयता नीति",
+    "terms": "सेवा की शर्तें",
+    "support": "सहायता",
+    "rateApp": "GovPass को रेट करें",
+    "signOut": "साइन आउट",
+    "deleteAccount": "खाता हटाएं",
+    "version": "संस्करण"
+  },
+  "auth": {
+    "welcome": "अपने लाभ खोजें",
+    "tagline": "AI-संचालित सरकारी सेवा गाइड",
+    "signIn": "साइन इन",
+    "signUp": "खाता बनाएं",
+    "email": "ईमेल",
+    "password": "पासवर्ड",
+    "forgotPassword": "पासवर्ड भूल गए?",
+    "continueWithGoogle": "Google से जारी रखें",
+    "continueWithApple": "Apple से जारी रखें"
+  },
+  "onboarding": {
+    "slide1Title": "सरकारी लाभ आसान बनाए",
+    "slide1Sub": "AI 200+ कार्यक्रमों को स्कैन करके वे लाभ खोजती है जिनके लिए आप अभी योग्य हैं",
+    "slide2Title": "89,000 अमेरिकियों का भरोसा",
+    "slide2Sub": "GovPass उपयोगकर्ताओं ने $45M से अधिक के सरकारी लाभ प्राप्त किए हैं",
+    "slide3Title": "आप किसके लिए सहायता खोज रहे हैं?",
+    "slide3Sub": "GovPass आपकी स्थिति के अनुसार अपनी खोज को व्यक्तिगत बनाता है",
+    "skip": "छोड़ें",
+    "next": "अगला",
+    "getStarted": "शुरू करें"
+  },
+  "paywall": {
+    "title": "सभी लाभ अनलॉक करें",
+    "subtitle": "हर वह कार्यक्रम खोजें जिसके लिए आप योग्य हैं",
+    "monthly": "मासिक",
+    "annual": "वार्षिक",
+    "perMonth": "/माह",
+    "perYear": "/वर्ष",
+    "startTrial": "निःशुल्क परीक्षण शुरू करें",
+    "restore": "खरीदारी पुनर्स्थापित करें",
+    "cancel": "कभी भी रद्द करें"
+  },
+  "common": {
+    "save": "सहेजें",
+    "cancel": "रद्द करें",
+    "delete": "हटाएं",
+    "edit": "संपादित करें",
+    "loading": "लोड हो रहा है...",
+    "error": "कुछ गलत हो गया",
+    "search": "खोजें",
+    "back": "वापस",
+    "close": "बंद करें"
+  },
+  "language": {
+    "selectLanguage": "भाषा चुनें",
+    "en": "English",
+    "es": "Español",
+    "hi": "हिन्दी",
+    "zh": "中文",
+    "ar": "العربية",
+    "pt": "Português",
+    "fr": "Français",
+    "de": "Deutsch",
+    "ja": "日本語",
+    "ko": "한국어"
+  }
+}

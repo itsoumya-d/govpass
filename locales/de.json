@@ -1,0 +1,131 @@
+{
+  "tabs": {
+    "home": "Start",
+    "benefits": "Leistungen",
+    "forms": "Formulare",
+    "programs": "Programme",
+    "settings": "Einstellungen"
+  },
+  "home": {
+    "title": "GovPass",
+    "benefitsFound": "Gefundene Leistungen",
+    "estimatedValue": "Geschätzter Jahreswert",
+    "deadlines": "Bevorstehende Fristen",
+    "recentChecks": "Letzte Prüfungen",
+    "checkBenefits": "Meine Leistungen prüfen",
+    "noActivity": "Noch keine Aktivität"
+  },
+  "benefits": {
+    "title": "Meine Leistungen",
+    "qualified": "Sie qualifizieren sich",
+    "check": "Berechtigung prüfen",
+    "snap": "SNAP Nahrungsmittelhilfe",
+    "medicaid": "Medicaid",
+    "medicare": "Medicare",
+    "socialSecurity": "Sozialversicherung",
+    "housing": "Wohnungshilfe",
+    "childcare": "Kinderbetreuungshilfe",
+    "unemployment": "Arbeitslosengeld",
+    "disability": "Behinderungsleistungen",
+    "annualValue": "Jahreswert",
+    "howToApply": "Wie man sich bewirbt",
+    "deadline": "Bewerbungsfrist",
+    "noBenefits": "Keine Leistungen für Ihr Profil gefunden"
+  },
+  "forms": {
+    "title": "Regierungsformulare",
+    "search": "Formulare suchen...",
+    "recent": "Zuletzt verwendet",
+    "popular": "Am beliebtesten",
+    "fill": "Formular mit KI ausfüllen",
+    "download": "Herunterladen",
+    "instructions": "Anweisungen",
+    "noForms": "Noch keine Formulare",
+    "startFilling": "Suchen Sie ein Formular, um zu beginnen"
+  },
+  "programs": {
+    "title": "Regierungsprogramme",
+    "federal": "Bundesprogramme",
+    "state": "Staatliche Programme",
+    "local": "Lokale Programme",
+    "search": "Programme suchen...",
+    "category": "Kategorie",
+    "eligibility": "Berechtigung",
+    "howToApply": "Wie man sich bewirbt",
+    "contactInfo": "Kontaktinformationen"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "account": "Konto",
+    "profile": "Profil bearbeiten",
+    "household": "Haushaltsinformationen",
+    "subscription": "Abonnement",
+    "notifications": "Benachrichtigungen",
+    "language": "Sprache",
+    "state": "Ihr Bundesstaat",
+    "privacy": "Datenschutzrichtlinie",
+    "terms": "Nutzungsbedingungen",
+    "support": "Hilfe & Support",
+    "rateApp": "GovPass bewerten",
+    "signOut": "Abmelden",
+    "deleteAccount": "Konto löschen",
+    "version": "Version"
+  },
+  "auth": {
+    "welcome": "Finden Sie Ihre Leistungen",
+    "tagline": "KI-gestützter Leitfaden für Regierungsleistungen",
+    "signIn": "Anmelden",
+    "signUp": "Konto erstellen",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "forgotPassword": "Passwort vergessen?",
+    "continueWithGoogle": "Mit Google fortfahren",
+    "continueWithApple": "Mit Apple fortfahren"
+  },
+  "onboarding": {
+    "slide1Title": "Regierungsleistungen leicht gemacht",
+    "slide1Sub": "KI scannt über 200 Programme, um Leistungen zu finden, für die Sie jetzt qualifiziert sind",
+    "slide2Title": "Von 89.000 Amerikanern vertraut",
+    "slide2Sub": "GovPass-Nutzer haben über 45 Mio. $ an Regierungsleistungen beansprucht",
+    "slide3Title": "Für wen suchen Sie Hilfe?",
+    "slide3Sub": "GovPass personalisiert seine Suche auf Ihre Situation",
+    "skip": "Überspringen",
+    "next": "Weiter",
+    "getStarted": "Loslegen"
+  },
+  "paywall": {
+    "title": "Alle Leistungen freischalten",
+    "subtitle": "Finden Sie jedes Programm, für das Sie qualifiziert sind",
+    "monthly": "Monatlich",
+    "annual": "Jährlich",
+    "perMonth": "/Monat",
+    "perYear": "/Jahr",
+    "startTrial": "Kostenlose Testversion starten",
+    "restore": "Käufe wiederherstellen",
+    "cancel": "Jederzeit kündigen"
+  },
+  "common": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "loading": "Laden...",
+    "error": "Etwas ist schiefgelaufen",
+    "search": "Suchen",
+    "back": "Zurück",
+    "close": "Schließen"
+  },
+  "language": {
+    "selectLanguage": "Sprache auswählen",
+    "en": "English",
+    "es": "Español",
+    "hi": "हिन्दी",
+    "zh": "中文",
+    "ar": "العربية",
+    "pt": "Português",
+    "fr": "Français",
+    "de": "Deutsch",
+    "ja": "日本語",
+    "ko": "한국어"
+  }
+}

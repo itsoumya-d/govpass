@@ -1,6 +1,9 @@
 /**
  * send-notifications — Expo Push Notification sender for GovPass
- * POST body: { userId?: string, type: string, data?: Record<string,string> }
+ *
+ * POST body options:
+ *   { userId?: string, type: string, data?: Record<string,string> }  — standard
+ *   { userId: string, type: 'lifecycle', day: number }               — lifecycle sequence
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -10,10 +13,51 @@ const BRAND = 'GovPass';
 interface NotificationTemplate {
   title: string;
   body: string;
-  data?: Record<string, string>;
+  data?: Record<string, unknown>;
   sound?: 'default' | null;
   badge?: number;
 }
+
+// ─── D1–D30 Lifecycle Templates ───────────────────────────────────────────────
+const LIFECYCLE_TEMPLATES: Record<string, NotificationTemplate> = {
+  d1_welcome: {
+    title: 'What benefits are you owed?',
+    body: 'GovPass AI checks 200+ federal and state programs to find benefits you qualify for right now.',
+    data: { type: 'lifecycle', day: 1, screen: '/(tabs)/eligibility' },
+    sound: 'default',
+  },
+  d3_reengagement: {
+    title: 'Reminder: Benefits check',
+    body: "You haven't checked your benefits yet. The average person qualifies for 3+ programs they don't use.",
+    data: { type: 'lifecycle', day: 3, screen: '/(tabs)/eligibility' },
+    sound: 'default',
+  },
+  d7_achievement: {
+    title: '💡 Form help available',
+    body: 'GovPass can fill out government forms in plain language. Tap to try it on any document.',
+    data: { type: 'lifecycle', day: 7, screen: '/(tabs)/documents', action: 'fill-form' },
+    sound: 'default',
+  },
+  d14_upgrade: {
+    title: 'Upgrade for full access',
+    body: 'Unlock unlimited benefit checks and form assistance for $4.99/mo. Cancel anytime.',
+    data: { type: 'lifecycle', day: 14, screen: '/(auth)/paywall' },
+    sound: 'default',
+    badge: 1,
+  },
+  d21_feature_discovery: {
+    title: 'Tax credit season',
+    body: 'You may qualify for EITC, Child Tax Credit, or state credits. GovPass can check in 2 minutes.',
+    data: { type: 'lifecycle', day: 21, screen: '/(tabs)/eligibility', action: 'tax-credits' },
+    sound: 'default',
+  },
+  d30_winback: {
+    title: 'Benefits summary for March',
+    body: 'GovPass found [X] programs you qualify for. You\'ve saved [X] hours on government paperwork.',
+    data: { type: 'lifecycle', day: 30, screen: '/(tabs)/dashboard' },
+    sound: 'default',
+  },
+};
 
 const NOTIFICATIONS: Record<string, (d?: Record<string, string>) => NotificationTemplate> = {
   'new-benefit-found': (d) => ({
@@ -67,10 +111,41 @@ Deno.serve(async (req) => {
   if (!authHeader?.startsWith('Bearer ')) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
 
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-  let body: { userId?: string; type: string; data?: Record<string, string> };
+  let body: { userId?: string; type: string; day?: number; data?: Record<string, string> };
   try { body = await req.json(); } catch { return new Response(JSON.stringify({ error: 'Invalid JSON' }), { status: 400 }); }
 
-  const { userId, type, data: extraData } = body;
+  const { userId, type, day, data: extraData } = body;
+
+  // ── Lifecycle notification routing ──────────────────────────────────────────
+  if (type === 'lifecycle') {
+    const dayKey = `d${day}_${
+      day === 1 ? 'welcome' :
+      day === 3 ? 'reengagement' :
+      day === 7 ? 'achievement' :
+      day === 14 ? 'upgrade' :
+      day === 21 ? 'feature_discovery' :
+      day === 30 ? 'winback' : ''
+    }`;
+    const template = LIFECYCLE_TEMPLATES[dayKey];
+    if (!template) return new Response(JSON.stringify({ error: `No lifecycle template for day ${day}` }), { status: 400 });
+
+    let lcTokens: { push_token: string }[] = [];
+    if (userId) {
+      const { data } = await supabase.from('profiles').select('expo_push_token').eq('id', userId).not('expo_push_token', 'is', null).single();
+      if (data?.expo_push_token) lcTokens = [{ push_token: data.expo_push_token }];
+    } else {
+      const { data } = await supabase.from('profiles').select('expo_push_token').not('expo_push_token', 'is', null);
+      if (data) lcTokens = data.filter((p: { expo_push_token: string | null }) => p.expo_push_token).map((p: { expo_push_token: string }) => ({ push_token: p.expo_push_token }));
+    }
+
+    if (lcTokens.length === 0) return new Response(JSON.stringify({ sent: 0 }), { status: 200 });
+    const lcResults = await Promise.allSettled(lcTokens.map(({ push_token }) => sendExpoPush(push_token, template)));
+    const lcSent = lcResults.filter(r => r.status === 'fulfilled' && (r as PromiseFulfilledResult<{ status: string }>).value.status === 'ok').length;
+    console.log(`[govpass:send-notifications] lifecycle day=${day} sent=${lcSent} failed=${lcResults.length - lcSent}`);
+    return new Response(JSON.stringify({ sent: lcSent, failed: lcResults.length - lcSent, total: lcResults.length }), { status: 200 });
+  }
+
+  // ── Standard notification routing ───────────────────────────────────────────
   const templateFn = NOTIFICATIONS[type];
   if (!templateFn) return new Response(JSON.stringify({ error: `Unknown type: ${type}` }), { status: 400 });
   const notification = templateFn(extraData);

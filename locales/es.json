@@ -1,0 +1,131 @@
+{
+  "tabs": {
+    "home": "Inicio",
+    "benefits": "Beneficios",
+    "forms": "Formularios",
+    "programs": "Programas",
+    "settings": "Ajustes"
+  },
+  "home": {
+    "title": "GovPass",
+    "benefitsFound": "Beneficios Encontrados",
+    "estimatedValue": "Valor Anual Estimado",
+    "deadlines": "Próximas Fechas Límite",
+    "recentChecks": "Verificaciones Recientes",
+    "checkBenefits": "Verificar Mis Beneficios",
+    "noActivity": "Sin actividad aún"
+  },
+  "benefits": {
+    "title": "Mis Beneficios",
+    "qualified": "Calificas",
+    "check": "Verificar Elegibilidad",
+    "snap": "Asistencia Alimentaria SNAP",
+    "medicaid": "Medicaid",
+    "medicare": "Medicare",
+    "socialSecurity": "Seguro Social",
+    "housing": "Asistencia de Vivienda",
+    "childcare": "Asistencia para Cuidado Infantil",
+    "unemployment": "Desempleo",
+    "disability": "Beneficios por Discapacidad",
+    "annualValue": "Valor Anual",
+    "howToApply": "Cómo Aplicar",
+    "deadline": "Fecha Límite de Solicitud",
+    "noBenefits": "No se encontraron beneficios para tu perfil"
+  },
+  "forms": {
+    "title": "Formularios Gubernamentales",
+    "search": "Buscar formularios...",
+    "recent": "Usados Recientemente",
+    "popular": "Más Populares",
+    "fill": "Completar Formulario con IA",
+    "download": "Descargar",
+    "instructions": "Instrucciones",
+    "noForms": "Sin formularios aún",
+    "startFilling": "Busca un formulario para comenzar"
+  },
+  "programs": {
+    "title": "Programas Gubernamentales",
+    "federal": "Programas Federales",
+    "state": "Programas Estatales",
+    "local": "Programas Locales",
+    "search": "Buscar programas...",
+    "category": "Categoría",
+    "eligibility": "Elegibilidad",
+    "howToApply": "Cómo Aplicar",
+    "contactInfo": "Información de Contacto"
+  },
+  "settings": {
+    "title": "Ajustes",
+    "account": "Cuenta",
+    "profile": "Editar Perfil",
+    "household": "Información del Hogar",
+    "subscription": "Suscripción",
+    "notifications": "Notificaciones",
+    "language": "Idioma",
+    "state": "Tu Estado",
+    "privacy": "Política de Privacidad",
+    "terms": "Términos de Servicio",
+    "support": "Ayuda y Soporte",
+    "rateApp": "Calificar GovPass",
+    "signOut": "Cerrar Sesión",
+    "deleteAccount": "Eliminar Cuenta",
+    "version": "Versión"
+  },
+  "auth": {
+    "welcome": "Encuentra Tus Beneficios",
+    "tagline": "Guía de servicios gubernamentales con IA",
+    "signIn": "Iniciar Sesión",
+    "signUp": "Crear Cuenta",
+    "email": "Correo Electrónico",
+    "password": "Contraseña",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "continueWithGoogle": "Continuar con Google",
+    "continueWithApple": "Continuar con Apple"
+  },
+  "onboarding": {
+    "slide1Title": "Beneficios gubernamentales simplificados",
+    "slide1Sub": "La IA escanea más de 200 programas para encontrar los beneficios a los que calificas ahora mismo",
+    "slide2Title": "Con la confianza de 89,000 estadounidenses",
+    "slide2Sub": "Los usuarios de GovPass han reclamado más de $45M en beneficios gubernamentales",
+    "slide3Title": "¿Para quién buscas ayuda?",
+    "slide3Sub": "GovPass personaliza su búsqueda a tu situación",
+    "skip": "Omitir",
+    "next": "Siguiente",
+    "getStarted": "Comenzar"
+  },
+  "paywall": {
+    "title": "Desbloquear Todos los Beneficios",
+    "subtitle": "Encuentra cada programa para el que calificas",
+    "monthly": "Mensual",
+    "annual": "Anual",
+    "perMonth": "/mes",
+    "perYear": "/año",
+    "startTrial": "Iniciar Prueba Gratuita",
+    "restore": "Restaurar Compras",
+    "cancel": "Cancela en cualquier momento"
+  },
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "loading": "Cargando...",
+    "error": "Algo salió mal",
+    "search": "Buscar",
+    "back": "Atrás",
+    "close": "Cerrar"
+  },
+  "language": {
+    "selectLanguage": "Seleccionar Idioma",
+    "en": "English",
+    "es": "Español",
+    "hi": "हिन्दी",
+    "zh": "中文",
+    "ar": "العربية",
+    "pt": "Português",
+    "fr": "Français",
+    "de": "Deutsch",
+    "ja": "日本語",
+    "ko": "한국어"
+  }
+}

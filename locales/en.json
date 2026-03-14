@@ -1,0 +1,131 @@
+{
+  "tabs": {
+    "home": "Home",
+    "benefits": "Benefits",
+    "forms": "Forms",
+    "programs": "Programs",
+    "settings": "Settings"
+  },
+  "home": {
+    "title": "GovPass",
+    "benefitsFound": "Benefits Found",
+    "estimatedValue": "Estimated Annual Value",
+    "deadlines": "Upcoming Deadlines",
+    "recentChecks": "Recent Checks",
+    "checkBenefits": "Check My Benefits",
+    "noActivity": "No activity yet"
+  },
+  "benefits": {
+    "title": "My Benefits",
+    "qualified": "You Qualify",
+    "check": "Check Eligibility",
+    "snap": "SNAP Food Assistance",
+    "medicaid": "Medicaid",
+    "medicare": "Medicare",
+    "socialSecurity": "Social Security",
+    "housing": "Housing Assistance",
+    "childcare": "Childcare Assistance",
+    "unemployment": "Unemployment",
+    "disability": "Disability Benefits",
+    "annualValue": "Annual Value",
+    "howToApply": "How to Apply",
+    "deadline": "Application Deadline",
+    "noBenefits": "No benefits found for your profile"
+  },
+  "forms": {
+    "title": "Government Forms",
+    "search": "Search forms...",
+    "recent": "Recently Used",
+    "popular": "Most Popular",
+    "fill": "Fill Form with AI",
+    "download": "Download",
+    "instructions": "Instructions",
+    "noForms": "No forms yet",
+    "startFilling": "Search for a form to get started"
+  },
+  "programs": {
+    "title": "Government Programs",
+    "federal": "Federal Programs",
+    "state": "State Programs",
+    "local": "Local Programs",
+    "search": "Search programs...",
+    "category": "Category",
+    "eligibility": "Eligibility",
+    "howToApply": "How to Apply",
+    "contactInfo": "Contact Info"
+  },
+  "settings": {
+    "title": "Settings",
+    "account": "Account",
+    "profile": "Edit Profile",
+    "household": "Household Info",
+    "subscription": "Subscription",
+    "notifications": "Notifications",
+    "language": "Language",
+    "state": "Your State",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "support": "Help & Support",
+    "rateApp": "Rate GovPass",
+    "signOut": "Sign Out",
+    "deleteAccount": "Delete Account",
+    "version": "Version"
+  },
+  "auth": {
+    "welcome": "Find Your Benefits",
+    "tagline": "AI-powered government services guide",
+    "signIn": "Sign In",
+    "signUp": "Create Account",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot Password?",
+    "continueWithGoogle": "Continue with Google",
+    "continueWithApple": "Continue with Apple"
+  },
+  "onboarding": {
+    "slide1Title": "Government benefits made simple",
+    "slide1Sub": "AI scans 200+ programs to find benefits you qualify for right now",
+    "slide2Title": "Trusted by 89,000 Americans",
+    "slide2Sub": "GovPass users have claimed over $45M in government benefits they deserved",
+    "slide3Title": "Who are you looking for help?",
+    "slide3Sub": "GovPass personalizes its search to your situation",
+    "skip": "Skip",
+    "next": "Next",
+    "getStarted": "Get Started"
+  },
+  "paywall": {
+    "title": "Unlock All Benefits",
+    "subtitle": "Find every program you qualify for",
+    "monthly": "Monthly",
+    "annual": "Annual",
+    "perMonth": "/month",
+    "perYear": "/year",
+    "startTrial": "Start Free Trial",
+    "restore": "Restore Purchases",
+    "cancel": "Cancel anytime"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "search": "Search",
+    "back": "Back",
+    "close": "Close"
+  },
+  "language": {
+    "selectLanguage": "Select Language",
+    "en": "English",
+    "es": "Español",
+    "hi": "हिन्दी",
+    "zh": "中文",
+    "ar": "العربية",
+    "pt": "Português",
+    "fr": "Français",
+    "de": "Deutsch",
+    "ja": "日本語",
+    "ko": "한국어"
+  }
+}

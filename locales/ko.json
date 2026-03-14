@@ -1,0 +1,131 @@
+{
+  "tabs": {
+    "home": "홈",
+    "benefits": "혜택",
+    "forms": "양식",
+    "programs": "프로그램",
+    "settings": "설정"
+  },
+  "home": {
+    "title": "GovPass",
+    "benefitsFound": "발견된 혜택",
+    "estimatedValue": "예상 연간 가치",
+    "deadlines": "다가오는 마감일",
+    "recentChecks": "최근 확인",
+    "checkBenefits": "내 혜택 확인",
+    "noActivity": "아직 활동 없음"
+  },
+  "benefits": {
+    "title": "내 혜택",
+    "qualified": "자격이 있습니다",
+    "check": "자격 확인",
+    "snap": "SNAP 식품 지원",
+    "medicaid": "메디케이드",
+    "medicare": "메디케어",
+    "socialSecurity": "사회보장",
+    "housing": "주거 지원",
+    "childcare": "보육 지원",
+    "unemployment": "실업급여",
+    "disability": "장애 혜택",
+    "annualValue": "연간 가치",
+    "howToApply": "신청 방법",
+    "deadline": "신청 마감일",
+    "noBenefits": "프로필에 맞는 혜택을 찾지 못했습니다"
+  },
+  "forms": {
+    "title": "정부 양식",
+    "search": "양식 검색...",
+    "recent": "최근 사용",
+    "popular": "가장 인기 있는",
+    "fill": "AI로 양식 작성",
+    "download": "다운로드",
+    "instructions": "지침",
+    "noForms": "아직 양식 없음",
+    "startFilling": "양식을 검색하여 시작하세요"
+  },
+  "programs": {
+    "title": "정부 프로그램",
+    "federal": "연방 프로그램",
+    "state": "주 프로그램",
+    "local": "지역 프로그램",
+    "search": "프로그램 검색...",
+    "category": "카테고리",
+    "eligibility": "자격",
+    "howToApply": "신청 방법",
+    "contactInfo": "연락처 정보"
+  },
+  "settings": {
+    "title": "설정",
+    "account": "계정",
+    "profile": "프로필 편집",
+    "household": "가구 정보",
+    "subscription": "구독",
+    "notifications": "알림",
+    "language": "언어",
+    "state": "귀하의 주",
+    "privacy": "개인정보 처리방침",
+    "terms": "서비스 약관",
+    "support": "도움말 및 지원",
+    "rateApp": "GovPass 평가",
+    "signOut": "로그아웃",
+    "deleteAccount": "계정 삭제",
+    "version": "버전"
+  },
+  "auth": {
+    "welcome": "혜택 찾기",
+    "tagline": "AI 기반 정부 서비스 가이드",
+    "signIn": "로그인",
+    "signUp": "계정 만들기",
+    "email": "이메일",
+    "password": "비밀번호",
+    "forgotPassword": "비밀번호를 잊으셨나요?",
+    "continueWithGoogle": "Google로 계속",
+    "continueWithApple": "Apple로 계속"
+  },
+  "onboarding": {
+    "slide1Title": "정부 혜택을 쉽게",
+    "slide1Sub": "AI가 200개 이상의 프로그램을 스캔하여 지금 받을 수 있는 혜택을 찾아드립니다",
+    "slide2Title": "89,000명의 미국인이 신뢰",
+    "slide2Sub": "GovPass 사용자들이 4,500만 달러 이상의 정부 혜택을 받았습니다",
+    "slide3Title": "누구를 위한 도움을 찾고 계신가요?",
+    "slide3Sub": "GovPass가 귀하의 상황에 맞게 검색을 맞춤화합니다",
+    "skip": "건너뛰기",
+    "next": "다음",
+    "getStarted": "시작하기"
+  },
+  "paywall": {
+    "title": "모든 혜택 잠금 해제",
+    "subtitle": "자격이 있는 모든 프로그램 찾기",
+    "monthly": "월간",
+    "annual": "연간",
+    "perMonth": "/월",
+    "perYear": "/년",
+    "startTrial": "무료 체험 시작",
+    "restore": "구매 복원",
+    "cancel": "언제든지 취소 가능"
+  },
+  "common": {
+    "save": "저장",
+    "cancel": "취소",
+    "delete": "삭제",
+    "edit": "편집",
+    "loading": "로딩 중...",
+    "error": "문제가 발생했습니다",
+    "search": "검색",
+    "back": "뒤로",
+    "close": "닫기"
+  },
+  "language": {
+    "selectLanguage": "언어 선택",
+    "en": "English",
+    "es": "Español",
+    "hi": "हिन्दी",
+    "zh": "中文",
+    "ar": "العربية",
+    "pt": "Português",
+    "fr": "Français",
+    "de": "Deutsch",
+    "ja": "日本語",
+    "ko": "한국어"
+  }
+}

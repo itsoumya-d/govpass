@@ -7,9 +7,9 @@ import { signOut, deleteAccount } from '@/lib/auth';
 import { router } from 'expo-router';
 import { isBiometricAvailable, getBiometricType, setBiometricEnabled, isBiometricEnabled } from '@/lib/biometrics';
 import { shareContent } from '@/lib/share';
+import LanguagePicker from '@/components/LanguagePicker';
 
 const MENU = [
-  { icon: 'globe-outline', label: 'Language', value: 'English' },
   { icon: 'notifications-outline', label: 'Notifications', value: 'On' },
   { icon: 'shield-checkmark-outline', label: 'Privacy & Security', value: '' },
   { icon: 'help-circle-outline', label: 'Help & Support', value: '' },
@@ -85,6 +85,8 @@ export default function SettingsScreen() {
           </View>
         </View>
         <View style={s.section}>
+          <LanguagePicker />
+          <View style={s.menuBorder} />
           {MENU.map((item, i) => (
             <TouchableOpacity accessibilityRole="button" key={i} style={[s.menuItem, i < MENU.length - 1 && s.menuBorder]}
               onPress={item.label === 'Refer a Friend' ? () => shareContent('Join me on GovPass! Use my link for a free month: https://govpass.app/?ref=USER123') : undefined}>

@@ -1,0 +1,131 @@
+{
+  "tabs": {
+    "home": "Accueil",
+    "benefits": "Aides",
+    "forms": "Formulaires",
+    "programs": "Programmes",
+    "settings": "Paramètres"
+  },
+  "home": {
+    "title": "GovPass",
+    "benefitsFound": "Aides Trouvées",
+    "estimatedValue": "Valeur Annuelle Estimée",
+    "deadlines": "Prochaines Échéances",
+    "recentChecks": "Vérifications Récentes",
+    "checkBenefits": "Vérifier Mes Aides",
+    "noActivity": "Aucune activité pour l'instant"
+  },
+  "benefits": {
+    "title": "Mes Aides",
+    "qualified": "Vous Êtes Éligible",
+    "check": "Vérifier l'Éligibilité",
+    "snap": "Aide Alimentaire SNAP",
+    "medicaid": "Medicaid",
+    "medicare": "Medicare",
+    "socialSecurity": "Sécurité Sociale",
+    "housing": "Aide au Logement",
+    "childcare": "Aide à la Garde d'Enfants",
+    "unemployment": "Chômage",
+    "disability": "Allocations d'Invalidité",
+    "annualValue": "Valeur Annuelle",
+    "howToApply": "Comment Postuler",
+    "deadline": "Date Limite de Candidature",
+    "noBenefits": "Aucune aide trouvée pour votre profil"
+  },
+  "forms": {
+    "title": "Formulaires Gouvernementaux",
+    "search": "Rechercher des formulaires...",
+    "recent": "Récemment Utilisés",
+    "popular": "Les Plus Populaires",
+    "fill": "Remplir le Formulaire avec l'IA",
+    "download": "Télécharger",
+    "instructions": "Instructions",
+    "noForms": "Aucun formulaire pour l'instant",
+    "startFilling": "Recherchez un formulaire pour commencer"
+  },
+  "programs": {
+    "title": "Programmes Gouvernementaux",
+    "federal": "Programmes Fédéraux",
+    "state": "Programmes d'État",
+    "local": "Programmes Locaux",
+    "search": "Rechercher des programmes...",
+    "category": "Catégorie",
+    "eligibility": "Éligibilité",
+    "howToApply": "Comment Postuler",
+    "contactInfo": "Informations de Contact"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "account": "Compte",
+    "profile": "Modifier le Profil",
+    "household": "Informations du Foyer",
+    "subscription": "Abonnement",
+    "notifications": "Notifications",
+    "language": "Langue",
+    "state": "Votre État",
+    "privacy": "Politique de Confidentialité",
+    "terms": "Conditions d'Utilisation",
+    "support": "Aide et Support",
+    "rateApp": "Évaluer GovPass",
+    "signOut": "Se Déconnecter",
+    "deleteAccount": "Supprimer le Compte",
+    "version": "Version"
+  },
+  "auth": {
+    "welcome": "Trouvez Vos Aides",
+    "tagline": "Guide des services gouvernementaux par IA",
+    "signIn": "Se Connecter",
+    "signUp": "Créer un Compte",
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "forgotPassword": "Mot de passe oublié ?",
+    "continueWithGoogle": "Continuer avec Google",
+    "continueWithApple": "Continuer avec Apple"
+  },
+  "onboarding": {
+    "slide1Title": "Les aides gouvernementales simplifiées",
+    "slide1Sub": "L'IA analyse plus de 200 programmes pour trouver les aides auxquelles vous avez droit maintenant",
+    "slide2Title": "La confiance de 89 000 Américains",
+    "slide2Sub": "Les utilisateurs de GovPass ont réclamé plus de 45 M$ en aides gouvernementales",
+    "slide3Title": "Pour qui cherchez-vous de l'aide ?",
+    "slide3Sub": "GovPass personnalise sa recherche à votre situation",
+    "skip": "Passer",
+    "next": "Suivant",
+    "getStarted": "Commencer"
+  },
+  "paywall": {
+    "title": "Débloquer Toutes les Aides",
+    "subtitle": "Trouvez chaque programme auquel vous avez droit",
+    "monthly": "Mensuel",
+    "annual": "Annuel",
+    "perMonth": "/mois",
+    "perYear": "/an",
+    "startTrial": "Démarrer l'Essai Gratuit",
+    "restore": "Restaurer les Achats",
+    "cancel": "Annulez à tout moment"
+  },
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "loading": "Chargement...",
+    "error": "Une erreur s'est produite",
+    "search": "Rechercher",
+    "back": "Retour",
+    "close": "Fermer"
+  },
+  "language": {
+    "selectLanguage": "Sélectionner la Langue",
+    "en": "English",
+    "es": "Español",
+    "hi": "हिन्दी",
+    "zh": "中文",
+    "ar": "العربية",
+    "pt": "Português",
+    "fr": "Français",
+    "de": "Deutsch",
+    "ja": "日本語",
+    "ko": "한국어"
+  }
+}

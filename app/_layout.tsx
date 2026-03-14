@@ -1,3 +1,6 @@
+import '../lib/i18n';
+import { initI18n } from '@/lib/i18n';
+initI18n();
 import { initSentry } from '@/lib/sentry';
 initSentry();
 import { useEffect, useState } from 'react';

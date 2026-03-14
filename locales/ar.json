@@ -1,0 +1,131 @@
+{
+  "tabs": {
+    "home": "الرئيسية",
+    "benefits": "المزايا",
+    "forms": "النماذج",
+    "programs": "البرامج",
+    "settings": "الإعدادات"
+  },
+  "home": {
+    "title": "GovPass",
+    "benefitsFound": "المزايا المكتشفة",
+    "estimatedValue": "القيمة السنوية المقدرة",
+    "deadlines": "المواعيد النهائية القادمة",
+    "recentChecks": "الفحوصات الأخيرة",
+    "checkBenefits": "تحقق من مزاياي",
+    "noActivity": "لا يوجد نشاط بعد"
+  },
+  "benefits": {
+    "title": "مزاياي",
+    "qualified": "أنت مؤهل",
+    "check": "تحقق من الأهلية",
+    "snap": "مساعدة غذاء SNAP",
+    "medicaid": "Medicaid",
+    "medicare": "Medicare",
+    "socialSecurity": "الضمان الاجتماعي",
+    "housing": "مساعدة الإسكان",
+    "childcare": "مساعدة رعاية الأطفال",
+    "unemployment": "إعانة البطالة",
+    "disability": "استحقاقات الإعاقة",
+    "annualValue": "القيمة السنوية",
+    "howToApply": "كيفية التقديم",
+    "deadline": "الموعد النهائي للتقديم",
+    "noBenefits": "لم يتم العثور على مزايا لملفك الشخصي"
+  },
+  "forms": {
+    "title": "النماذج الحكومية",
+    "search": "ابحث عن نماذج...",
+    "recent": "المستخدمة مؤخراً",
+    "popular": "الأكثر شعبية",
+    "fill": "ملء النموذج بالذكاء الاصطناعي",
+    "download": "تنزيل",
+    "instructions": "التعليمات",
+    "noForms": "لا توجد نماذج بعد",
+    "startFilling": "ابحث عن نموذج للبدء"
+  },
+  "programs": {
+    "title": "البرامج الحكومية",
+    "federal": "البرامج الفيدرالية",
+    "state": "برامج الولاية",
+    "local": "البرامج المحلية",
+    "search": "ابحث عن برامج...",
+    "category": "الفئة",
+    "eligibility": "الأهلية",
+    "howToApply": "كيفية التقديم",
+    "contactInfo": "معلومات الاتصال"
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "account": "الحساب",
+    "profile": "تعديل الملف الشخصي",
+    "household": "معلومات المنزل",
+    "subscription": "الاشتراك",
+    "notifications": "الإشعارات",
+    "language": "اللغة",
+    "state": "ولايتك",
+    "privacy": "سياسة الخصوصية",
+    "terms": "شروط الخدمة",
+    "support": "المساعدة والدعم",
+    "rateApp": "قيّم GovPass",
+    "signOut": "تسجيل الخروج",
+    "deleteAccount": "حذف الحساب",
+    "version": "الإصدار"
+  },
+  "auth": {
+    "welcome": "ابحث عن مزاياك",
+    "tagline": "دليل الخدمات الحكومية المدعوم بالذكاء الاصطناعي",
+    "signIn": "تسجيل الدخول",
+    "signUp": "إنشاء حساب",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "forgotPassword": "نسيت كلمة المرور؟",
+    "continueWithGoogle": "المتابعة مع Google",
+    "continueWithApple": "المتابعة مع Apple"
+  },
+  "onboarding": {
+    "slide1Title": "مزايا حكومية بكل سهولة",
+    "slide1Sub": "يفحص الذكاء الاصطناعي أكثر من 200 برنامج للعثور على المزايا التي تستحقها الآن",
+    "slide2Title": "ثقة 89,000 أمريكي",
+    "slide2Sub": "مستخدمو GovPass حصلوا على أكثر من 45 مليون دولار من المزايا الحكومية",
+    "slide3Title": "من تبحث عن مساعدة له؟",
+    "slide3Sub": "يخصص GovPass بحثه وفقاً لوضعك",
+    "skip": "تخطي",
+    "next": "التالي",
+    "getStarted": "البدء"
+  },
+  "paywall": {
+    "title": "فتح جميع المزايا",
+    "subtitle": "اكتشف كل برنامج تستحقه",
+    "monthly": "شهري",
+    "annual": "سنوي",
+    "perMonth": "/شهر",
+    "perYear": "/سنة",
+    "startTrial": "بدء الفترة التجريبية المجانية",
+    "restore": "استعادة المشتريات",
+    "cancel": "إلغاء في أي وقت"
+  },
+  "common": {
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "loading": "جاري التحميل...",
+    "error": "حدث خطأ ما",
+    "search": "بحث",
+    "back": "رجوع",
+    "close": "إغلاق"
+  },
+  "language": {
+    "selectLanguage": "اختر اللغة",
+    "en": "English",
+    "es": "Español",
+    "hi": "हिन्दी",
+    "zh": "中文",
+    "ar": "العربية",
+    "pt": "Português",
+    "fr": "Français",
+    "de": "Deutsch",
+    "ja": "日本語",
+    "ko": "한국어"
+  }
+}
