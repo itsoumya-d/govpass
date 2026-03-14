@@ -54,7 +54,7 @@ export default function LanguageScreen() {
           {languages.map((lang) => {
             const isSelected = selected === lang.code;
             return (
-              <TouchableOpacity
+              <TouchableOpacity accessibilityRole="button"
                 key={lang.code}
                 onPress={() => setSelected(lang.code)}
                 style={[
@@ -93,7 +93,7 @@ export default function LanguageScreen() {
         <View style={{ flex: 1 }} />
 
         {/* Continue Button */}
-        <TouchableOpacity
+        <TouchableOpacity accessibilityRole="button"
           onPress={handleContinue}
           disabled={!selected}
           style={[styles.continueButton, !selected && styles.continueButtonDisabled]}

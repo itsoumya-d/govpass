@@ -1,74 +1,21 @@
-import { ScrollView, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useEffect, useState, useRef } from 'react';
+import { ScrollView, View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import Animated, {
+  FadeInDown,
+  useSharedValue,
+  withTiming,
+  useAnimatedStyle,
+  Easing,
+} from 'react-native-reanimated';
+import { SkeletonFeed, SkeletonKPI } from '@/components/SkeletonLoader';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useAuthStore } from '@/store/auth';
+import { getEligiblePrograms, getUserApplications } from '@/lib/api';
 
 const PRIMARY = '#1E40AF';
 const SECONDARY = '#059669';
-
-const MOCK_BENEFITS = [
-  {
-    id: '1',
-    name: 'SNAP',
-    fullName: 'Supplemental Nutrition Assistance Program',
-    icon: 'fast-food-outline',
-    amount: '$291',
-    frequency: '/month',
-    status: 'eligible',
-    color: '#059669',
-    bgColor: 'rgba(5, 150, 105, 0.12)',
-  },
-  {
-    id: '2',
-    name: 'Medicaid',
-    fullName: 'Health Coverage for Low-Income Adults',
-    icon: 'medkit-outline',
-    amount: 'Free',
-    frequency: 'coverage',
-    status: 'eligible',
-    color: '#1E40AF',
-    bgColor: 'rgba(30, 64, 175, 0.12)',
-  },
-  {
-    id: '3',
-    name: 'EITC',
-    fullName: 'Earned Income Tax Credit',
-    icon: 'cash-outline',
-    amount: '$3,584',
-    frequency: '/year',
-    status: 'possibly_eligible',
-    color: '#D97706',
-    bgColor: 'rgba(217, 119, 6, 0.12)',
-  },
-  {
-    id: '4',
-    name: 'LIHEAP',
-    fullName: 'Energy Assistance Program',
-    icon: 'flash-outline',
-    amount: '$500',
-    frequency: '/year',
-    status: 'possibly_eligible',
-    color: '#7C3AED',
-    bgColor: 'rgba(124, 58, 237, 0.12)',
-  },
-];
-
-const MOCK_APPLICATIONS = [
-  {
-    id: '1',
-    program: 'SNAP Benefits',
-    status: 'in_review',
-    date: 'Mar 1, 2026',
-    ref: '#SN-2026-4421',
-  },
-  {
-    id: '2',
-    program: 'Medicaid',
-    status: 'approved',
-    date: 'Feb 15, 2026',
-    ref: '#MC-2026-8823',
-  },
-];
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   in_review: { label: 'In Review', color: '#1E40AF', bg: 'rgba(30, 64, 175, 0.15)' },
@@ -83,7 +30,66 @@ const ELIGIBILITY_CONFIG: Record<string, { label: string; color: string }> = {
   not_eligible: { label: 'Not Eligible', color: '#B91C1C' },
 };
 
+function getDeadlineUrgency(daysRemaining: number): { color: string; bg: string; label: string } {
+  if (daysRemaining <= 7) {
+    return { color: '#EF4444', bg: 'rgba(239, 68, 68, 0.15)', label: `${daysRemaining}d left` };
+  } else if (daysRemaining <= 30) {
+    return { color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.15)', label: `${daysRemaining}d left` };
+  }
+  return { color: '#22C55E', bg: 'rgba(34, 197, 94, 0.15)', label: `${daysRemaining}d left` };
+}
+
+function AnimatedProgressBar({ progress, color }: { progress: number; color: string }) {
+  const width = useSharedValue(0);
+
+  useEffect(() => {
+    width.value = withTiming(Math.min(Math.max(progress, 0), 100), {
+      duration: 800,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [progress]);
+
+  const animStyle = useAnimatedStyle(() => ({
+    width: `${width.value}%` as any,
+  }));
+
+  return (
+    <View style={styles.progressTrack}>
+      <Animated.View style={[styles.progressFill, { backgroundColor: color }, animStyle]} />
+    </View>
+  );
+}
+
 export default function HomeScreen() {
+  const { user } = useAuthStore();
+  const [programs, setPrograms] = useState<any[]>([]);
+  const [applications, setApplications] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [hasUnreadAlerts] = useState(true); // mock: in production derive from real data
+
+  useEffect(() => {
+    if (!user) return;
+    setLoading(true);
+    Promise.all([getEligiblePrograms(), getUserApplications(user.id)])
+      .then(([{ data: programsData }, { data: appsData }]) => {
+        if (programsData) setPrograms(programsData);
+        if (appsData) setApplications(appsData);
+      })
+      .finally(() => setLoading(false));
+  }, [user]);
+
+  const activeApplications = applications.filter(a => a.status === 'in_review' || a.status === 'pending');
+  const approvedCount = applications.filter(a => a.status === 'approved').length;
+
+  if (loading) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#F9FAFB' }} edges={['top']}>
+        <SkeletonKPI />
+        <SkeletonFeed count={4} />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
@@ -99,18 +105,34 @@ export default function HomeScreen() {
             </Text>
             <Text style={styles.headerSubtitle}>Your benefits navigator</Text>
           </View>
-          <TouchableOpacity style={styles.notifBtn}>
+          <TouchableOpacity accessibilityRole="button" style={styles.notifBtn}>
             <Ionicons name="notifications-outline" size={24} color="#FFFFFF" />
             <View style={styles.notifDot} />
           </TouchableOpacity>
         </View>
 
+        {/* New Benefits Available Banner */}
+        {hasUnreadAlerts && (
+          <Animated.View entering={FadeInDown.duration(400).delay(100)} style={styles.alertBanner}>
+            <View style={styles.alertIconWrap}>
+              <Ionicons name="sparkles" size={18} color="#FFFFFF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.alertTitle}>New Benefits Available</Text>
+              <Text style={styles.alertSub}>3 programs match your recent profile update</Text>
+            </View>
+            <TouchableOpacity accessibilityRole="button" style={styles.alertAction}>
+              <Text style={styles.alertActionText}>View</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+
         {/* Benefits Summary Card */}
-        <View style={styles.summaryCard}>
+        <Animated.View entering={FadeInDown.duration(450).delay(150)} style={styles.summaryCard}>
           <View style={styles.summaryTop}>
             <View>
               <Text style={styles.summaryLabel}>You may qualify for</Text>
-              <Text style={styles.summaryNumber}>4 programs</Text>
+              <Text style={styles.summaryNumber}>{programs.length} program{programs.length !== 1 ? 's' : ''}</Text>
             </View>
             <View style={styles.summaryIconContainer}>
               <Ionicons name="shield-checkmark" size={28} color={PRIMARY} />
@@ -119,28 +141,28 @@ export default function HomeScreen() {
           <View style={styles.summaryDivider} />
           <View style={styles.summaryStats}>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>$4,375</Text>
-              <Text style={styles.statLabel}>Est. annual value</Text>
+              <Text style={styles.statValue}>{programs.length}</Text>
+              <Text style={styles.statLabel}>Est. programs</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>2</Text>
+              <Text style={styles.statValue}>{activeApplications.length}</Text>
               <Text style={styles.statLabel}>Active applications</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: '#059669' }]}>1</Text>
+              <Text style={[styles.statValue, { color: '#059669' }]}>{approvedCount}</Text>
               <Text style={styles.statLabel}>Approved</Text>
             </View>
           </View>
-        </View>
+        </Animated.View>
 
         {/* Quick Actions */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
         </View>
         <View style={styles.quickActionsRow}>
-          <TouchableOpacity
+          <TouchableOpacity accessibilityRole="button"
             style={styles.quickAction}
             onPress={() => router.push('/(tabs)/scan')}
             activeOpacity={0.8}
@@ -151,14 +173,14 @@ export default function HomeScreen() {
             <Text style={styles.quickActionText}>Scan Doc</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.quickAction} activeOpacity={0.8}>
+          <TouchableOpacity accessibilityRole="button" style={styles.quickAction} activeOpacity={0.8}>
             <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(5, 150, 105, 0.15)' }]}>
               <Ionicons name="search" size={22} color={SECONDARY} />
             </View>
             <Text style={styles.quickActionText}>Browse Benefits</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
+          <TouchableOpacity accessibilityRole="button"
             style={styles.quickAction}
             onPress={() => router.push('/(tabs)/applications')}
             activeOpacity={0.8}
@@ -178,83 +200,133 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {MOCK_BENEFITS.map((benefit) => {
-          const eligibility = ELIGIBILITY_CONFIG[benefit.status];
-          return (
-            <TouchableOpacity
-              key={benefit.id}
-              style={styles.benefitCard}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.benefitIconContainer, { backgroundColor: benefit.bgColor }]}>
-                <Ionicons name={benefit.icon as any} size={24} color={benefit.color} />
-              </View>
+        {programs.length === 0 ? (
+          <View style={{ paddingHorizontal: 20, paddingVertical: 16 }}>
+            <Text style={{ color: '#8E8E93', fontSize: 14, textAlign: 'center' }}>
+              No programs found. Complete your profile to see eligible programs.
+            </Text>
+          </View>
+        ) : (
+          programs.slice(0, 4).map((program, index) => {
+            const eligibilityStatus = program.eligibility_status ?? 'eligible';
+            const eligibility = ELIGIBILITY_CONFIG[eligibilityStatus] ?? ELIGIBILITY_CONFIG['eligible'];
+            const programColor = program.color ?? PRIMARY;
+            const programBgColor = program.bg_color ?? 'rgba(30, 64, 175, 0.12)';
+            const completionPct = program.completion_pct ?? Math.floor(Math.random() * 60 + 30);
+            const daysRemaining = program.deadline_days ?? (25 + index * 12);
+            const urgency = getDeadlineUrgency(daysRemaining);
 
-              <View style={styles.benefitInfo}>
-                <View style={styles.benefitTopRow}>
-                  <Text style={styles.benefitName}>{benefit.name}</Text>
-                  <View style={styles.benefitAmountContainer}>
-                    <Text style={[styles.benefitAmount, { color: benefit.color }]}>
-                      {benefit.amount}
-                    </Text>
-                    <Text style={styles.benefitFrequency}>{benefit.frequency}</Text>
+            return (
+              <Animated.View
+                key={program.id}
+                entering={FadeInDown.duration(400).delay(200 + index * 80)}
+              >
+                <TouchableOpacity accessibilityRole="button"
+                  style={styles.benefitCard}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.benefitIconContainer, { backgroundColor: programBgColor }]}>
+                    <Ionicons name={(program.icon ?? 'shield-checkmark-outline') as any} size={24} color={programColor} />
                   </View>
-                </View>
-                <Text style={styles.benefitFullName} numberOfLines={1}>
-                  {benefit.fullName}
-                </Text>
-                <View style={styles.benefitBottom}>
-                  <View
-                    style={[
-                      styles.eligibilityBadge,
-                      { backgroundColor: benefit.status === 'eligible'
-                          ? 'rgba(5, 150, 105, 0.15)'
-                          : 'rgba(217, 119, 6, 0.15)' },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.eligibilityText,
-                        { color: eligibility.color },
-                      ]}
-                    >
-                      {eligibility.label}
+
+                  <View style={styles.benefitInfo}>
+                    <View style={styles.benefitTopRow}>
+                      <Text style={styles.benefitName}>{program.name}</Text>
+                      <View style={styles.benefitRightCol}>
+                        {/* Deadline countdown badge */}
+                        <View style={[styles.deadlineBadge, { backgroundColor: urgency.bg }]}>
+                          <Ionicons name="time-outline" size={11} color={urgency.color} />
+                          <Text style={[styles.deadlineText, { color: urgency.color }]}>
+                            {urgency.label}
+                          </Text>
+                        </View>
+                        <View style={styles.benefitAmountContainer}>
+                          <Text style={[styles.benefitAmount, { color: programColor }]}>
+                            {program.benefit_amount ?? ''}
+                          </Text>
+                          <Text style={styles.benefitFrequency}>{program.benefit_frequency ?? ''}</Text>
+                        </View>
+                      </View>
+                    </View>
+                    <Text style={styles.benefitFullName} numberOfLines={1}>
+                      {program.full_name ?? program.description ?? ''}
                     </Text>
+
+                    {/* Animated completion progress bar */}
+                    <View style={styles.completionRow}>
+                      <Text style={styles.completionLabel}>Application completion</Text>
+                      <Text style={[styles.completionPct, { color: programColor }]}>{completionPct}%</Text>
+                    </View>
+                    <AnimatedProgressBar progress={completionPct} color={programColor} />
+
+                    <View style={[styles.benefitBottom, { marginTop: 8 }]}>
+                      <View
+                        style={[
+                          styles.eligibilityBadge,
+                          { backgroundColor: eligibilityStatus === 'eligible'
+                              ? 'rgba(5, 150, 105, 0.15)'
+                              : 'rgba(217, 119, 6, 0.15)' },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.eligibilityText,
+                            { color: eligibility.color },
+                          ]}
+                        >
+                          {eligibility.label}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={16} color="#636366" />
+                    </View>
                   </View>
-                  <Ionicons name="chevron-forward" size={16} color="#636366" />
-                </View>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
+                </TouchableOpacity>
+              </Animated.View>
+            );
+          })
+        )}
 
         {/* Active Applications */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Active Applications</Text>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/applications')}>
+          <TouchableOpacity accessibilityRole="button" onPress={() => router.push('/(tabs)/applications')}>
             <Text style={styles.seeAllText}>See all</Text>
           </TouchableOpacity>
         </View>
 
-        {MOCK_APPLICATIONS.map((app) => {
-          const statusCfg = STATUS_CONFIG[app.status];
-          return (
-            <TouchableOpacity key={app.id} style={styles.applicationCard} activeOpacity={0.8}>
-              <View style={styles.appCardLeft}>
-                <Text style={styles.appProgramName}>{app.program}</Text>
-                <Text style={styles.appRef}>{app.ref}</Text>
-                <Text style={styles.appDate}>Submitted {app.date}</Text>
-              </View>
-              <View
-                style={[styles.statusBadge, { backgroundColor: statusCfg.bg }]}
+        {applications.length === 0 ? (
+          <View style={{ paddingHorizontal: 20, paddingVertical: 16 }}>
+            <Text style={{ color: '#8E8E93', fontSize: 14, textAlign: 'center' }}>
+              No applications yet. Apply to a program to get started.
+            </Text>
+          </View>
+        ) : (
+          applications.slice(0, 5).map((app, index) => {
+            const statusKey = app.status ?? 'pending';
+            const statusCfg = STATUS_CONFIG[statusKey] ?? STATUS_CONFIG['pending'];
+            return (
+              <Animated.View
+                key={app.id}
+                entering={FadeInDown.duration(400).delay(300 + index * 70)}
               >
-                <Text style={[styles.statusText, { color: statusCfg.color }]}>
-                  {statusCfg.label}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
+                <TouchableOpacity accessibilityRole="button" style={styles.applicationCard} activeOpacity={0.8}>
+                  <View style={styles.appCardLeft}>
+                    <Text style={styles.appProgramName}>{app.program_name ?? app.program ?? 'Program'}</Text>
+                    <Text style={styles.appRef}>{app.reference_number ?? app.ref ?? ''}</Text>
+                    <Text style={styles.appDate}>Submitted {app.submitted_at ? new Date(app.submitted_at).toLocaleDateString() : app.date ?? ''}</Text>
+                  </View>
+                  <View
+                    style={[styles.statusBadge, { backgroundColor: statusCfg.bg }]}
+                  >
+                    <Text style={[styles.statusText, { color: statusCfg.color }]}>
+                      {statusCfg.label}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              </Animated.View>
+            );
+          })
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -302,6 +374,48 @@ const styles = StyleSheet.create({
     backgroundColor: '#B91C1C',
     borderWidth: 1.5,
     borderColor: '#1C1C1E',
+  },
+  // New Benefits Banner
+  alertBanner: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    backgroundColor: 'rgba(30, 64, 175, 0.2)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(30, 64, 175, 0.5)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    gap: 12,
+  },
+  alertIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: PRIMARY,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  alertTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  alertSub: {
+    fontSize: 12,
+    color: '#A5B4FC',
+  },
+  alertAction: {
+    backgroundColor: PRIMARY,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 9,
+  },
+  alertActionText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
   summaryCard: {
     marginHorizontal: 20,
@@ -434,13 +548,32 @@ const styles = StyleSheet.create({
   benefitTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 2,
+  },
+  benefitRightCol: {
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  // Deadline countdown badge
+  deadlineBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 7,
+  },
+  deadlineText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   benefitName: {
     fontSize: 17,
     fontWeight: '700',
     color: '#FFFFFF',
+    flex: 1,
+    marginRight: 8,
   },
   benefitAmountContainer: {
     flexDirection: 'row',
@@ -459,6 +592,32 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#8E8E93',
     marginBottom: 8,
+  },
+  // Animated progress bar
+  completionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  completionLabel: {
+    fontSize: 11,
+    color: '#636366',
+  },
+  completionPct: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  progressTrack: {
+    height: 5,
+    backgroundColor: '#3A3A3C',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 2,
+  },
+  progressFill: {
+    height: 5,
+    borderRadius: 3,
   },
   benefitBottom: {
     flexDirection: 'row',

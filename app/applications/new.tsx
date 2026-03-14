@@ -79,7 +79,7 @@ export default function NewApplicationScreen() {
     <SafeAreaView style={s.safe} edges={['top']}>
       {/* Header */}
       <View style={s.header}>
-        <TouchableOpacity
+        <TouchableOpacity accessibilityRole="button"
           onPress={() => step === 1 ? router.back() : setStep(step - 1)}
           style={s.backBtn}
         >
@@ -121,7 +121,7 @@ export default function NewApplicationScreen() {
             <Text style={s.stepTitle}>Select a Program</Text>
             <Text style={s.stepSubtitle}>Choose the benefit program you want to apply for.</Text>
             {PROGRAMS.map(prog => (
-              <TouchableOpacity
+              <TouchableOpacity accessibilityRole="button"
                 key={prog.id}
                 style={[s.programCard, selectedProgram === prog.id && s.programCardSelected]}
                 onPress={() => setSelectedProgram(prog.id)}
@@ -193,7 +193,7 @@ export default function NewApplicationScreen() {
                       {uploaded ? 'Uploaded' : doc.required ? 'Required' : 'Optional'}
                     </Text>
                   </View>
-                  <TouchableOpacity
+                  <TouchableOpacity accessibilityRole="button"
                     style={[s.uploadBtn, uploaded && { backgroundColor: SUCCESS + '20', borderColor: SUCCESS }]}
                     onPress={() => toggleDoc(doc.id)}
                   >
@@ -257,7 +257,7 @@ export default function NewApplicationScreen() {
 
       {/* Bottom CTA */}
       <View style={s.bottomBar}>
-        <TouchableOpacity
+        <TouchableOpacity accessibilityRole="button"
           style={s.nextBtn}
           onPress={step === TOTAL_STEPS ? handleSubmit : handleNext}
         >

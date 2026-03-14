@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import EmptyState from '@/components/EmptyState';
+import { SkeletonListItem } from '@/components/SkeletonLoader';
 
 const PRIMARY = '#1E40AF';
 
@@ -110,6 +112,12 @@ const FILTER_OPTIONS: { key: AppStatus | 'all'; label: string }[] = [
 export default function ApplicationsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<AppStatus | 'all'>('all');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 700);
+    return () => clearTimeout(timer);
+  }, []);
 
   const filtered = MOCK_APPLICATIONS.filter((app) => {
     const matchesSearch =
@@ -118,6 +126,18 @@ export default function ApplicationsScreen() {
     const matchesFilter = activeFilter === 'all' || app.status === activeFilter;
     return matchesSearch && matchesFilter;
   });
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ScrollView className="flex-1 px-4 pt-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <SkeletonListItem key={i} />
+          ))}
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -138,7 +158,7 @@ export default function ApplicationsScreen() {
           style={styles.searchInput}
         />
         {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
+          <TouchableOpacity accessibilityRole="button" onPress={() => setSearchQuery('')}>
             <Ionicons name="close-circle" size={18} color="#636366" />
           </TouchableOpacity>
         )}
@@ -152,7 +172,7 @@ export default function ApplicationsScreen() {
         contentContainerStyle={styles.filterContent}
       >
         {FILTER_OPTIONS.map((opt) => (
-          <TouchableOpacity
+          <TouchableOpacity accessibilityRole="button"
             key={opt.key}
             onPress={() => setActiveFilter(opt.key)}
             style={[
@@ -179,16 +199,16 @@ export default function ApplicationsScreen() {
         showsVerticalScrollIndicator={false}
       >
         {filtered.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="document-text-outline" size={48} color="#3A3A3C" />
-            <Text style={styles.emptyStateText}>No applications found</Text>
-            <Text style={styles.emptyStateSubtext}>Try adjusting your search or filter</Text>
-          </View>
+          <EmptyState
+            icon="document-text-outline"
+            title="No applications"
+            description="Start your eligibility check to find programs you qualify for"
+          />
         ) : (
           filtered.map((app) => {
             const statusCfg = STATUS_CONFIG[app.status];
             return (
-              <TouchableOpacity key={app.id} style={styles.appCard} activeOpacity={0.8}>
+              <TouchableOpacity accessibilityRole="button" key={app.id} style={styles.appCard} activeOpacity={0.8}>
                 {/* Top row */}
                 <View style={styles.appCardTop}>
                   <View style={[styles.appIconContainer, { backgroundColor: app.iconBg }]}>
@@ -237,7 +257,7 @@ export default function ApplicationsScreen() {
       </ScrollView>
 
       {/* FAB */}
-      <TouchableOpacity style={styles.fab} activeOpacity={0.85}>
+      <TouchableOpacity accessibilityRole="button" style={styles.fab} activeOpacity={0.85}>
         <Ionicons name="add" size={24} color="#FFFFFF" />
         <Text style={styles.fabText}>New Application</Text>
       </TouchableOpacity>

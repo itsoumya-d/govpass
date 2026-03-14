@@ -1,558 +1,352 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
   ScrollView,
   ActivityIndicator,
+  Alert,
+  Animated,
+  Platform,
 } from 'react-native';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-
-const { width, height } = Dimensions.get('window');
-const PRIMARY = '#1E40AF';
-
-type ScanPhase = 'select' | 'scanning' | 'results';
+import * as Haptics from 'expo-haptics';
+import { supabase } from '@/lib/supabase';
+import { analyzeDocument, type DocumentAnalysis } from '@/lib/api';
 
 const DOCUMENT_TYPES = [
-  {
-    id: 'id',
-    label: 'Government ID',
-    description: "Driver's license, passport, state ID",
-    icon: 'card-outline',
-    color: '#1E40AF',
-    bg: 'rgba(30, 64, 175, 0.12)',
-  },
-  {
-    id: 'pay_stub',
-    label: 'Pay Stub',
-    description: 'Recent paycheck, income verification',
-    icon: 'wallet-outline',
-    color: '#059669',
-    bg: 'rgba(5, 150, 105, 0.12)',
-  },
-  {
-    id: 'tax_return',
-    label: 'Tax Return',
-    description: 'W-2, 1099, or full tax return',
-    icon: 'document-outline',
-    color: '#D97706',
-    bg: 'rgba(217, 119, 6, 0.12)',
-  },
-  {
-    id: 'utility_bill',
-    label: 'Utility Bill',
-    description: 'Proof of address, energy bills',
-    icon: 'flash-outline',
-    color: '#7C3AED',
-    bg: 'rgba(124, 58, 237, 0.12)',
-  },
+  { id: 'id', label: 'Government ID', icon: 'card-outline', color: '#1E40AF' },
+  { id: 'pay_stub', label: 'Pay Stub', icon: 'wallet-outline', color: '#059669' },
+  { id: 'tax_return', label: 'Tax Return', icon: 'document-outline', color: '#D97706' },
+  { id: 'utility_bill', label: 'Utility Bill', icon: 'flash-outline', color: '#7C3AED' },
+  { id: 'birth_certificate', label: 'Birth Certificate', icon: 'ribbon-outline', color: '#DC2626' },
+  { id: 'other', label: 'Other Document', icon: 'document-text-outline', color: '#6B7280' },
+] as const;
+type DocTypeId = typeof DOCUMENT_TYPES[number]['id'];
+
+type OcrStep = 0 | 1 | 2 | 3; // 0=idle, 1=capturing, 2=extracting, 3=matching
+
+const OCR_STEPS = [
+  { label: 'Capturing', icon: 'camera-outline', color: '#1E40AF' },
+  { label: 'Extracting Text', icon: 'text-outline', color: '#D97706' },
+  { label: 'Matching Benefits', icon: 'search-outline', color: '#059669' },
 ];
 
-const MOCK_RESULTS = [
-  { program: 'SNAP Benefits', status: 'eligible', reason: 'Income within threshold' },
-  { program: 'Medicaid', status: 'eligible', reason: 'Household size qualifies' },
-  { program: 'EITC', status: 'possible', reason: 'Verify filing status' },
-  { program: 'CHIP', status: 'not_eligible', reason: 'No children under 19' },
-];
+function StepIndicator({ currentStep }: { currentStep: OcrStep }) {
+  // currentStep 1,2,3 maps to step indices 0,1,2
+  return (
+    <View style={si.container}>
+      {OCR_STEPS.map((step, idx) => {
+        const stepNum = (idx + 1) as OcrStep;
+        const isActive = currentStep === stepNum;
+        const isDone = currentStep > stepNum;
+        const color = step.color;
+        return (
+          <View key={idx} style={si.stepRow}>
+            {idx > 0 && (
+              <View style={[si.connector, isDone && { backgroundColor: OCR_STEPS[idx - 1].color }]} />
+            )}
+            <View style={[
+              si.dot,
+              isActive && { backgroundColor: color, borderColor: color },
+              isDone && { backgroundColor: color, borderColor: color },
+            ]}>
+              {isDone ? (
+                <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+              ) : isActive ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <View style={si.emptyDot} />
+              )}
+            </View>
+            <Text style={[
+              si.label,
+              isActive && { color: color, fontWeight: '700' },
+              isDone && { color: '#64748B' },
+            ]}>
+              {step.label}
+            </Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
 
 export default function ScanScreen() {
-  const [phase, setPhase] = useState<ScanPhase>('select');
-  const [selectedDoc, setSelectedDoc] = useState<string | null>(null);
-  const [scanProgress, setScanProgress] = useState(0);
+  const [permission, requestPermission] = useCameraPermissions();
+  const [selectedDoc, setSelectedDoc] = useState<DocTypeId>('id');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [ocrStep, setOcrStep] = useState<OcrStep>(0);
+  const [result, setResult] = useState<DocumentAnalysis | null>(null);
+  const cameraRef = useRef<CameraView>(null);
+  const sheetAnim = useRef(new Animated.Value(0)).current;
+  const stepTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  const handleStartScan = () => {
-    if (!selectedDoc) return;
-    setPhase('scanning');
+  // Clear step timers on unmount
+  useEffect(() => {
+    return () => { stepTimers.current.forEach(t => clearTimeout(t)); };
+  }, []);
 
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 10;
-      setScanProgress(progress);
-      if (progress >= 100) {
-        clearInterval(interval);
-        setTimeout(() => setPhase('results'), 400);
-      }
-    }, 200);
+  const runOcrSteps = () => {
+    setOcrStep(1); // Capturing
+    const t1 = setTimeout(() => setOcrStep(2), 1000); // Extracting Text
+    const t2 = setTimeout(() => setOcrStep(3), 2200); // Matching Benefits
+    stepTimers.current = [t1, t2];
   };
 
-  const handleReset = () => {
-    setPhase('select');
-    setSelectedDoc(null);
-    setScanProgress(0);
+  const handleScan = async () => {
+    if (!cameraRef.current || isAnalyzing) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setIsAnalyzing(true);
+    setResult(null);
+    setOcrStep(0);
+    runOcrSteps();
+
+    try {
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.85, base64: true });
+      if (!photo?.base64) throw new Error('No image captured');
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const analysis = await analyzeDocument(user.id, photo.base64, selectedDoc);
+      setResult(analysis);
+      setOcrStep(0);
+      Animated.spring(sheetAnim, { toValue: 1, tension: 80, friction: 10, useNativeDriver: true }).start();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      setOcrStep(0);
+      Alert.alert('Scan Failed', 'Ensure the document is flat, well-lit, and within the frame.');
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
-  if (phase === 'results') {
+  if (!permission) return <SafeAreaView style={s.safe}><ActivityIndicator color="#1E40AF" style={{ flex: 1 }} /></SafeAreaView>;
+
+  if (!permission.granted) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={handleReset} style={styles.backBtn}>
-              <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Scan Results</Text>
-            <View style={{ width: 40 }} />
-          </View>
-
-          {/* Success banner */}
-          <View style={styles.successBanner}>
-            <View style={styles.successIconContainer}>
-              <Ionicons name="checkmark-circle" size={32} color="#059669" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.successTitle}>Document Analyzed</Text>
-              <Text style={styles.successSubtitle}>Based on your {DOCUMENT_TYPES.find(d => d.id === selectedDoc)?.label}</Text>
-            </View>
-          </View>
-
-          <Text style={styles.resultsLabel}>Eligibility Assessment</Text>
-
-          {MOCK_RESULTS.map((result, i) => {
-            const statusColor = result.status === 'eligible'
-              ? '#059669'
-              : result.status === 'possible'
-              ? '#D97706'
-              : '#B91C1C';
-            const statusBg = result.status === 'eligible'
-              ? 'rgba(5, 150, 105, 0.12)'
-              : result.status === 'possible'
-              ? 'rgba(217, 119, 6, 0.12)'
-              : 'rgba(185, 28, 28, 0.12)';
-            const statusLabel = result.status === 'eligible'
-              ? 'Likely Eligible'
-              : result.status === 'possible'
-              ? 'May Qualify'
-              : 'Not Eligible';
-
-            return (
-              <View key={i} style={styles.resultCard}>
-                <View style={styles.resultLeft}>
-                  <Text style={styles.resultProgramName}>{result.program}</Text>
-                  <Text style={styles.resultReason}>{result.reason}</Text>
-                </View>
-                <View style={[styles.resultBadge, { backgroundColor: statusBg }]}>
-                  <Text style={[styles.resultBadgeText, { color: statusColor }]}>{statusLabel}</Text>
-                </View>
-              </View>
-            );
-          })}
-
-          {/* CTA */}
-          <View style={styles.ctaSection}>
-            <TouchableOpacity style={styles.primaryCta} activeOpacity={0.85}>
-              <Ionicons name="document-text" size={18} color="#FFFFFF" />
-              <Text style={styles.primaryCtaText}>Start Applications</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.secondaryCta} onPress={handleReset} activeOpacity={0.85}>
-              <Text style={styles.secondaryCtaText}>Scan Another Document</Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
+      <SafeAreaView style={s.safe}>
+        <View style={s.center}>
+          <Ionicons name="camera-outline" size={52} color="#1E40AF" />
+          <Text style={s.permTitle}>Camera Required</Text>
+          <Text style={s.permSub}>GovPass needs camera access to scan and analyze your documents.</Text>
+          <TouchableOpacity accessibilityRole="button" style={s.permBtn} onPress={requestPermission}>
+            <Text style={s.permBtnText}>Grant Permission</Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     );
   }
 
-  if (phase === 'scanning') {
-    return (
-      <View style={styles.scanningContainer}>
-        {/* Mock camera view */}
-        <View style={styles.mockCamera}>
-          {/* Corner guides */}
-          <View style={[styles.cornerGuide, { top: 80, left: 30, borderTopWidth: 3, borderLeftWidth: 3 }]} />
-          <View style={[styles.cornerGuide, { top: 80, right: 30, borderTopWidth: 3, borderRightWidth: 3 }]} />
-          <View style={[styles.cornerGuide, { bottom: 80, left: 30, borderBottomWidth: 3, borderLeftWidth: 3 }]} />
-          <View style={[styles.cornerGuide, { bottom: 80, right: 30, borderBottomWidth: 3, borderRightWidth: 3 }]} />
-
-          {/* Scan line animation overlay */}
-          <View style={styles.scanOverlay}>
-            <ActivityIndicator color="#FFFFFF" size="large" />
-            <Text style={styles.scanningText}>Analyzing document...</Text>
-            <Text style={styles.scanningSubtext}>AI is reading your document</Text>
-          </View>
-        </View>
-
-        {/* Progress bar */}
-        <View style={styles.progressSection}>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${scanProgress}%` as any }]} />
-          </View>
-          <Text style={styles.progressText}>{scanProgress}% complete</Text>
-        </View>
-      </View>
-    );
-  }
+  const docType = DOCUMENT_TYPES.find(d => d.id === selectedDoc)!;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={{ width: 40 }} />
-          <Text style={styles.headerTitle}>Scan Document</Text>
-          <View style={{ width: 40 }} />
-        </View>
+    <View style={{ flex: 1, backgroundColor: '#0F172A' }}>
+      <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
 
-        {/* Camera preview placeholder */}
-        <View style={styles.cameraPreview}>
-          <View style={styles.cameraInner}>
-            <Ionicons name="camera" size={48} color="rgba(255,255,255,0.3)" />
-            <Text style={styles.cameraPlaceholderText}>Camera preview</Text>
-            <Text style={styles.cameraPlaceholderSubtext}>Position document within frame</Text>
+      <SafeAreaView style={{ flex: 1 }}>
+        <View style={s.header}>
+          <Text style={s.title}>Scan Document</Text>
+          <View style={[s.badge, { backgroundColor: docType.color + '30', borderColor: docType.color + '60' }]}>
+            <Ionicons name={docType.icon as any} size={14} color={docType.color} />
+            <Text style={[s.badgeText, { color: docType.color }]}>{docType.label}</Text>
           </View>
-          {/* Corner guides */}
-          <View style={[styles.cornerGuide, { top: 16, left: 16, borderTopWidth: 3, borderLeftWidth: 3 }]} />
-          <View style={[styles.cornerGuide, { top: 16, right: 16, borderTopWidth: 3, borderRightWidth: 3 }]} />
-          <View style={[styles.cornerGuide, { bottom: 16, left: 16, borderBottomWidth: 3, borderLeftWidth: 3 }]} />
-          <View style={[styles.cornerGuide, { bottom: 16, right: 16, borderBottomWidth: 3, borderRightWidth: 3 }]} />
         </View>
 
-        <Text style={styles.instructionText}>
-          Select the document type you want to scan
-        </Text>
-
-        {/* Document type selection */}
-        <View style={styles.docGrid}>
-          {DOCUMENT_TYPES.map((doc) => (
-            <TouchableOpacity
+        {/* Doc type selector */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.typeRow}>
+          {DOCUMENT_TYPES.map(doc => (
+            <TouchableOpacity accessibilityRole="button"
               key={doc.id}
               onPress={() => setSelectedDoc(doc.id)}
-              style={[
-                styles.docCard,
-                selectedDoc === doc.id && { borderColor: doc.color, backgroundColor: doc.bg },
-              ]}
-              activeOpacity={0.8}
+              style={[s.typeChip, selectedDoc === doc.id && { backgroundColor: doc.color + '25', borderColor: doc.color }]}
             >
-              <View
-                style={[
-                  styles.docIconContainer,
-                  { backgroundColor: selectedDoc === doc.id ? doc.bg : '#3A3A3C' },
-                ]}
-              >
-                <Ionicons
-                  name={doc.icon as any}
-                  size={24}
-                  color={selectedDoc === doc.id ? doc.color : '#8E8E93'}
-                />
-              </View>
-              <Text
-                style={[
-                  styles.docLabel,
-                  selectedDoc === doc.id && { color: doc.color },
-                ]}
-              >
-                {doc.label}
-              </Text>
-              <Text style={styles.docDescription} numberOfLines={2}>
-                {doc.description}
-              </Text>
+              <Ionicons name={doc.icon as any} size={16} color={selectedDoc === doc.id ? doc.color : '#94A3B8'} />
+              <Text style={[s.typeChipText, selectedDoc === doc.id && { color: doc.color }]}>{doc.label}</Text>
             </TouchableOpacity>
           ))}
+        </ScrollView>
+
+        {/* Document frame */}
+        <View style={s.vfArea}>
+          <View style={s.docFrame}>
+            <View style={s.cTL} /><View style={s.cTR} /><View style={s.cBL} /><View style={s.cBR} />
+            {isAnalyzing && (
+              <View style={s.analyzingBox}>
+                <ActivityIndicator color="#1E40AF" size="large" />
+                <Text style={s.analyzingText}>
+                  {ocrStep === 1 ? 'Capturing...' : ocrStep === 2 ? 'Extracting Text...' : 'Matching Benefits...'}
+                </Text>
+                <Text style={s.analyzingSubText}>AI Reading Document</Text>
+              </View>
+            )}
+          </View>
+          <Text style={s.hint}>Align document edges with the frame</Text>
+
+          {/* OCR Step Indicator — shown while analyzing */}
+          {isAnalyzing && ocrStep > 0 && (
+            <View style={s.stepIndicatorWrapper}>
+              <StepIndicator currentStep={ocrStep} />
+            </View>
+          )}
         </View>
 
-        {/* Scan button */}
-        <View style={{ paddingHorizontal: 20 }}>
-          <TouchableOpacity
-            onPress={handleStartScan}
-            disabled={!selectedDoc}
-            style={[styles.scanButton, !selectedDoc && styles.scanButtonDisabled]}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="scan" size={20} color={selectedDoc ? '#FFFFFF' : '#636366'} />
-            <Text style={[styles.scanButtonText, !selectedDoc && styles.scanButtonTextDisabled]}>
-              Scan Document
-            </Text>
+        {/* Capture */}
+        <View style={s.bottom}>
+          <TouchableOpacity accessibilityRole="button" style={s.capBtn} onPress={handleScan} disabled={isAnalyzing}>
+            {isAnalyzing
+              ? <ActivityIndicator color="#FFFFFF" size="large" />
+              : <><Ionicons name="scan" size={24} color="#FFFFFF" /><Text style={s.capText}>Scan Document</Text></>
+            }
           </TouchableOpacity>
-
-          <Text style={styles.privacyNote}>
-            Documents are analyzed locally. Nothing is stored without your permission.
-          </Text>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+
+      {/* Results */}
+      {result && (
+        <View style={StyleSheet.absoluteFill}>
+          <TouchableOpacity accessibilityRole="button" style={{ flex: 1 }} onPress={() => { setResult(null); sheetAnim.setValue(0); }} activeOpacity={1} />
+          <Animated.View style={[s.sheet, { transform: [{ translateY: sheetAnim.interpolate({ inputRange: [0, 1], outputRange: [500, 0] }) }] }]}>
+            <View style={s.sheetHandle} />
+            <Text style={s.sheetTitle}>Document Scanned</Text>
+            <Text style={s.sheetSub}>{result.summary}</Text>
+
+            <View style={s.dataGrid}>
+              {result.extractedData.fullName && <DataRow label="Name" value={result.extractedData.fullName} />}
+              {result.extractedData.dateOfBirth && <DataRow label="Date of Birth" value={result.extractedData.dateOfBirth} />}
+              {result.extractedData.address && <DataRow label="Address" value={result.extractedData.address} />}
+              {result.extractedData.income && <DataRow label="Annual Income" value={`$${result.extractedData.income.toLocaleString()}`} />}
+              {result.extractedData.documentNumber && <DataRow label="Document #" value={result.extractedData.documentNumber} />}
+            </View>
+
+            {result.eligibilityHints.length > 0 && (
+              <View style={s.hintsBox}>
+                <Text style={s.hintsTitle}>Potential Benefits</Text>
+                {result.eligibilityHints.map((hint, i) => (
+                  <View key={i} style={s.hintRow}>
+                    <Ionicons name="checkmark-circle" size={16} color="#059669" />
+                    <Text style={s.hintText}>{hint}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <TouchableOpacity accessibilityRole="button" style={s.ctaBtn}>
+              <Ionicons name="search" size={18} color="#FFFFFF" />
+              <Text style={s.ctaBtnText}>Check Full Eligibility</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      )}
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
+function DataRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={s.dataRow}>
+      <Text style={s.dataLabel}>{label}</Text>
+      <Text style={s.dataValue}>{value}</Text>
+    </View>
+  );
+}
+
+// Step indicator styles
+const si = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#1C1C1E',
-  },
-  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#2C2C2E',
-    alignItems: 'center',
     justifyContent: 'center',
+    gap: 0,
   },
-  cameraPreview: {
-    marginHorizontal: 20,
-    height: 220,
-    backgroundColor: '#000000',
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 20,
-    position: 'relative',
+  stepRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  cameraInner: {
-    alignItems: 'center',
-    gap: 8,
+  connector: {
+    width: 28,
+    height: 2,
+    backgroundColor: '#1E293B',
+    marginHorizontal: 2,
   },
-  cameraPlaceholderText: {
-    fontSize: 15,
-    color: 'rgba(255,255,255,0.4)',
-    fontWeight: '500',
-  },
-  cameraPlaceholderSubtext: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.25)',
-  },
-  cornerGuide: {
-    position: 'absolute',
+  dot: {
     width: 28,
     height: 28,
-    borderColor: PRIMARY,
-  },
-  instructionText: {
-    fontSize: 16,
-    color: '#8E8E93',
-    textAlign: 'center',
-    marginBottom: 16,
-    paddingHorizontal: 20,
-  },
-  docGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 20,
-    gap: 12,
-    marginBottom: 20,
-  },
-  docCard: {
-    width: (width - 52) / 2,
-    backgroundColor: '#2C2C2E',
     borderRadius: 14,
-    padding: 16,
     borderWidth: 2,
-    borderColor: '#38383A',
-    gap: 10,
-  },
-  docIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    borderColor: '#1E293B',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  docLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  docDescription: {
-    fontSize: 12,
-    color: '#8E8E93',
-    lineHeight: 18,
-  },
-  scanButton: {
-    backgroundColor: PRIMARY,
-    paddingVertical: 17,
-    borderRadius: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    shadowColor: PRIMARY,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-    marginBottom: 12,
-  },
-  scanButtonDisabled: {
-    backgroundColor: '#2C2C2E',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  scanButtonText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  scanButtonTextDisabled: {
-    color: '#636366',
-  },
-  privacyNote: {
-    fontSize: 12,
-    color: '#636366',
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  // Scanning phase
-  scanningContainer: {
-    flex: 1,
-    backgroundColor: '#000000',
-  },
-  mockCamera: {
-    flex: 1,
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scanOverlay: {
-    alignItems: 'center',
-    gap: 12,
-  },
-  scanningText: {
-    fontSize: 18,
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  scanningSubtext: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.6)',
-  },
-  progressSection: {
-    paddingHorizontal: 24,
-    paddingVertical: 24,
-    backgroundColor: '#1C1C1E',
-    gap: 8,
-  },
-  progressBar: {
+  emptyDot: {
+    width: 6,
     height: 6,
-    backgroundColor: '#38383A',
     borderRadius: 3,
-    overflow: 'hidden',
+    backgroundColor: '#1E293B',
   },
-  progressFill: {
-    height: '100%',
-    backgroundColor: PRIMARY,
-    borderRadius: 3,
+  label: {
+    color: '#64748B',
+    fontSize: 10,
+    fontWeight: '600',
+    marginLeft: 4,
+    marginRight: 4,
   },
-  progressText: {
-    fontSize: 13,
-    color: '#8E8E93',
-    textAlign: 'center',
-  },
-  // Results phase
-  successBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(5, 150, 105, 0.1)',
-    marginHorizontal: 20,
-    borderRadius: 14,
-    padding: 16,
-    gap: 12,
-    marginBottom: 20,
+});
+
+const s = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: '#0F172A' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 8, paddingBottom: 8 },
+  title: { fontSize: 24, fontWeight: '800', color: '#FFFFFF' },
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 9999, borderWidth: 1 },
+  badgeText: { fontSize: 12, fontWeight: '600' },
+  typeRow: { paddingHorizontal: 16, gap: 8, paddingBottom: 8 },
+  typeChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.4)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
+  typeChipText: { color: '#94A3B8', fontSize: 12, fontWeight: '600' },
+  vfArea: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  docFrame: { width: '85%', aspectRatio: 1.6, borderRadius: 8, position: 'relative', alignItems: 'center', justifyContent: 'center' },
+  cTL: { position: 'absolute', top: 0, left: 0, width: 32, height: 32, borderTopWidth: 3, borderLeftWidth: 3, borderColor: '#1E40AF', borderTopLeftRadius: 4 },
+  cTR: { position: 'absolute', top: 0, right: 0, width: 32, height: 32, borderTopWidth: 3, borderRightWidth: 3, borderColor: '#1E40AF', borderTopRightRadius: 4 },
+  cBL: { position: 'absolute', bottom: 0, left: 0, width: 32, height: 32, borderBottomWidth: 3, borderLeftWidth: 3, borderColor: '#1E40AF', borderBottomLeftRadius: 4 },
+  cBR: { position: 'absolute', bottom: 0, right: 0, width: 32, height: 32, borderBottomWidth: 3, borderRightWidth: 3, borderColor: '#1E40AF', borderBottomRightRadius: 4 },
+  analyzingBox: { backgroundColor: 'rgba(0,0,0,0.85)', padding: 24, borderRadius: 16, alignItems: 'center', gap: 10 },
+  analyzingText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
+  analyzingSubText: { color: '#94A3B8', fontSize: 12 },
+  hint: { color: 'rgba(255,255,255,0.6)', fontSize: 13 },
+  // Step indicator wrapper
+  stepIndicatorWrapper: {
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(5, 150, 105, 0.2)',
+    borderColor: 'rgba(255,255,255,0.1)',
   },
-  successIconContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: 'rgba(5, 150, 105, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  successTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  successSubtitle: {
-    fontSize: 13,
-    color: '#8E8E93',
-    marginTop: 2,
-  },
-  resultsLabel: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    paddingHorizontal: 20,
-    marginBottom: 12,
-  },
-  resultCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#2C2C2E',
-    marginHorizontal: 20,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 8,
-  },
-  resultLeft: {
-    flex: 1,
-    marginRight: 12,
-  },
-  resultProgramName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  resultReason: {
-    fontSize: 12,
-    color: '#8E8E93',
-    marginTop: 2,
-  },
-  resultBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    flexShrink: 0,
-  },
-  resultBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  ctaSection: {
-    paddingHorizontal: 20,
-    marginTop: 16,
-    gap: 12,
-  },
-  primaryCta: {
-    backgroundColor: PRIMARY,
-    paddingVertical: 17,
-    borderRadius: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  primaryCtaText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  secondaryCta: {
-    paddingVertical: 14,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#38383A',
-  },
-  secondaryCtaText: {
-    color: '#8E8E93',
-    fontSize: 15,
-    fontWeight: '600',
-  },
+  bottom: { paddingHorizontal: 20, paddingBottom: Platform.OS === 'ios' ? 36 : 20 },
+  capBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#1E40AF', paddingVertical: 16, borderRadius: 16, shadowColor: '#1E40AF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8 },
+  capText: { color: '#FFFFFF', fontSize: 17, fontWeight: '700' },
+  sheet: { backgroundColor: '#0F172A', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20, paddingBottom: Platform.OS === 'ios' ? 44 : 28, borderTopWidth: 1, borderTopColor: 'rgba(30,64,175,0.4)' },
+  sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#1E293B', alignSelf: 'center', marginBottom: 16 },
+  sheetTitle: { fontSize: 20, fontWeight: '800', color: '#FFFFFF', marginBottom: 6 },
+  sheetSub: { color: '#94A3B8', fontSize: 14, lineHeight: 20, marginBottom: 16 },
+  dataGrid: { backgroundColor: '#1E293B', borderRadius: 12, padding: 12, marginBottom: 16, gap: 8 },
+  dataRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  dataLabel: { color: '#64748B', fontSize: 13 },
+  dataValue: { color: '#FFFFFF', fontSize: 13, fontWeight: '600', flex: 1, textAlign: 'right' },
+  hintsBox: { backgroundColor: 'rgba(5,150,105,0.1)', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: 'rgba(5,150,105,0.3)', marginBottom: 16 },
+  hintsTitle: { color: '#059669', fontSize: 14, fontWeight: '700', marginBottom: 10 },
+  hintRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+  hintText: { color: '#CBD5E1', fontSize: 13, flex: 1 },
+  ctaBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#1E40AF', paddingVertical: 14, borderRadius: 14 },
+  ctaBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
+  permTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '700', marginTop: 20, marginBottom: 10, textAlign: 'center' },
+  permSub: { color: '#94A3B8', fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 32 },
+  permBtn: { backgroundColor: '#1E40AF', paddingVertical: 15, paddingHorizontal: 40, borderRadius: 12 },
+  permBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
 });

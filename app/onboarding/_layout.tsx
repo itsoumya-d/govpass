@@ -24,7 +24,7 @@ export default function OnboardingLayout() {
         {/* Header with skip button */}
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 24, paddingTop: 8 }}>
           {currentIndex > 0 && currentIndex < PAGES.length - 1 && (
-            <TouchableOpacity onPress={handleSkip} style={{ paddingVertical: 8, paddingHorizontal: 16 }}>
+            <TouchableOpacity accessibilityRole="button" onPress={handleSkip} style={{ paddingVertical: 8, paddingHorizontal: 16 }}>
               <Text style={{ color: '#8E8E93', fontSize: 16, fontWeight: '500' }}>Skip</Text>
             </TouchableOpacity>
           )}

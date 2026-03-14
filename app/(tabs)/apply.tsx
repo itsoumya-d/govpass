@@ -49,11 +49,11 @@ export default function ApplicationFlowScreen() {
 
       <View style={styles.footer}>
         {step > 0 && (
-          <TouchableOpacity style={styles.backBtn} onPress={() => setStep(s => s - 1)}>
+          <TouchableOpacity accessibilityRole="button" style={styles.backBtn} onPress={() => setStep(s => s - 1)}>
             <Text style={styles.backBtnText}>Back</Text>
           </TouchableOpacity>
         )}
-        <TouchableOpacity
+        <TouchableOpacity accessibilityRole="button"
           style={[styles.nextBtn, { backgroundColor: PRIMARY }]}
           onPress={() => { if (step < STEPS.length - 1) setStep(s => s + 1); }}
         >

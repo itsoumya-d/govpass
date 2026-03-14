@@ -85,7 +85,7 @@ export default function HouseholdScreen() {
           <Text style={styles.sectionLabel}>Household Size</Text>
           <Text style={styles.sectionHint}>Including yourself</Text>
           <View style={styles.counterRow}>
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               onPress={() => adjustCount(householdSize, -1, setHouseholdSizeLocal, 1)}
               style={[styles.counterBtn, householdSize <= 1 && styles.counterBtnDisabled]}
               activeOpacity={0.7}
@@ -98,7 +98,7 @@ export default function HouseholdScreen() {
                 {householdSize === 1 ? 'person' : 'people'}
               </Text>
             </View>
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               onPress={() => adjustCount(householdSize, 1, setHouseholdSizeLocal, 1, 9)}
               style={[styles.counterBtn, householdSize >= 9 && styles.counterBtnDisabled]}
               activeOpacity={0.7}
@@ -113,7 +113,7 @@ export default function HouseholdScreen() {
           <Text style={styles.sectionLabel}>Children Under 18</Text>
           <Text style={styles.sectionHint}>Affects SNAP, childcare, and school programs</Text>
           <View style={styles.counterRow}>
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               onPress={() => adjustCount(children, -1, setChildren, 0)}
               style={[styles.counterBtn, children <= 0 && styles.counterBtnDisabled]}
               activeOpacity={0.7}
@@ -126,7 +126,7 @@ export default function HouseholdScreen() {
                 {children === 1 ? 'child' : 'children'}
               </Text>
             </View>
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               onPress={() => adjustCount(children, 1, setChildren, 0, 9)}
               style={[styles.counterBtn]}
               activeOpacity={0.7}
@@ -140,7 +140,7 @@ export default function HouseholdScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>State of Residence</Text>
           <Text style={styles.sectionHint}>Benefits vary by state</Text>
-          <TouchableOpacity
+          <TouchableOpacity accessibilityRole="button"
             onPress={() => setShowStateDropdown(!showStateDropdown)}
             style={[styles.dropdownTrigger, selectedState ? styles.dropdownTriggerActive : null]}
             activeOpacity={0.8}
@@ -159,7 +159,7 @@ export default function HouseholdScreen() {
             <View style={styles.stateDropdown}>
               <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled>
                 {US_STATES.map((s) => (
-                  <TouchableOpacity
+                  <TouchableOpacity accessibilityRole="button"
                     key={s}
                     onPress={() => {
                       setSelectedState(s);
@@ -194,7 +194,7 @@ export default function HouseholdScreen() {
           <Text style={styles.sectionHint}>Approximate gross income for your household</Text>
           <View style={styles.incomeGrid}>
             {INCOME_RANGES.map((range) => (
-              <TouchableOpacity
+              <TouchableOpacity accessibilityRole="button"
                 key={range}
                 onPress={() => setSelectedIncome(range)}
                 style={[
@@ -217,7 +217,7 @@ export default function HouseholdScreen() {
         </View>
 
         {/* Continue Button */}
-        <TouchableOpacity
+        <TouchableOpacity accessibilityRole="button"
           onPress={handleContinue}
           disabled={!canContinue}
           style={[styles.continueButton, !canContinue && styles.continueButtonDisabled]}

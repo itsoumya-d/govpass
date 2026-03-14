@@ -6,7 +6,7 @@
     "orientation": "default",
     "icon": "./assets/icon.png",
     "scheme": "govpass",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -18,16 +18,37 @@
       "infoPlist": {
         "NSCameraUsageDescription": "GovPass uses your camera to scan government IDs and documents for auto-fill.",
         "NSPhotoLibraryUsageDescription": "GovPass accesses your photos to import document images.",
-        "NSMicrophoneUsageDescription": "GovPass may use the microphone for voice input."
-      }
+        "NSMicrophoneUsageDescription": "GovPass may use the microphone for voice input.",
+        "NSFaceIDUsageDescription": "Use Face ID to quickly and securely sign in to your account."
+      },
+      "buildNumber": "1",
+      "associatedDomains": ["applinks:govpass.app"]
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0F172A"
       },
-      "permissions": ["android.permission.CAMERA", "android.permission.READ_EXTERNAL_STORAGE"],
-      "package": "com.govpass.app"
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE"
+      ],
+      "package": "com.govpass.app",
+      "versionCode": 1,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "govpass.app",
+              "pathPrefix": "/"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -37,6 +58,7 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      "expo-local-authentication",
       [
         "expo-camera",
         {
@@ -48,7 +70,15 @@
         {
           "photosPermission": "Allow GovPass to access your photos to import document images."
         }
-      ]
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#ffffff"
+        }
+      ],
+      "@sentry/react-native/expo"
     ],
     "jsEngine": "hermes",
     "experiments": {

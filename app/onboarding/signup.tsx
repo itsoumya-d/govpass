@@ -67,7 +67,7 @@ export default function SignupScreen() {
           <Text style={styles.emailHighlight}>{email}</Text>
           {'\n\n'}Tap the link in your email to create your account.
         </Text>
-        <TouchableOpacity
+        <TouchableOpacity accessibilityRole="button"
           onPress={() => setMagicLinkSent(false)}
           style={styles.differentEmailBtn}
         >
@@ -111,7 +111,7 @@ export default function SignupScreen() {
           {/* Social buttons */}
           <View style={styles.socialSection}>
             {/* Apple */}
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               onPress={handleApple}
               disabled={socialLoading !== null}
               style={[styles.appleBtn, { opacity: socialLoading === 'apple' ? 0.7 : 1 }]}
@@ -126,7 +126,7 @@ export default function SignupScreen() {
             </TouchableOpacity>
 
             {/* Google */}
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               onPress={handleGoogle}
               disabled={socialLoading !== null}
               style={[styles.googleBtn, { opacity: socialLoading === 'google' ? 0.7 : 1 }]}
@@ -162,7 +162,7 @@ export default function SignupScreen() {
               style={[styles.emailInput, email ? styles.emailInputActive : null]}
             />
 
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               onPress={handleMagicLink}
               disabled={loading || !email}
               style={[styles.magicLinkBtn, !email && styles.magicLinkBtnDisabled]}
@@ -184,7 +184,7 @@ export default function SignupScreen() {
           {/* Already have account */}
           <View style={styles.loginRow}>
             <Text style={styles.loginRowText}>Already have an account?</Text>
-            <TouchableOpacity onPress={() => router.replace('/auth/login')}>
+            <TouchableOpacity accessibilityRole="button" onPress={() => router.replace('/auth/login')}>
               <Text style={styles.loginLink}>Sign in</Text>
             </TouchableOpacity>
           </View>

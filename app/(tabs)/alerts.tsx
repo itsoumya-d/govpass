@@ -1,6 +1,9 @@
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import EmptyState from '@/components/EmptyState';
+import { SkeletonListItem } from '@/components/SkeletonLoader';
 
 const ALERTS = [
   { id: '1', title: 'SNAP Benefit Renewal', subtitle: 'Your benefits renew in 7 days. Submit documents now.', time: '2h ago', icon: 'warning', color: '#F59E0B' },
@@ -10,6 +13,25 @@ const ALERTS = [
 ];
 
 export default function AlertsScreen() {
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 600);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#0A0F1E' }}>
+        <ScrollView className="flex-1 px-4 pt-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <SkeletonListItem key={i} />
+          ))}
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#0A0F1E' }}>
       <View style={s.header}>
@@ -18,21 +40,29 @@ export default function AlertsScreen() {
           <Text style={s.markRead}>Mark All Read</Text>
         </TouchableOpacity>
       </View>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {ALERTS.map((alert) => (
-          <TouchableOpacity key={alert.id} style={s.card}>
-            <View style={[s.iconBox, { backgroundColor: alert.color + '20' }]}>
-              <Ionicons name={alert.icon as any} size={22} color={alert.color} />
-            </View>
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={s.cardTitle}>{alert.title}</Text>
-              <Text style={s.cardSub}>{alert.subtitle}</Text>
-              <Text style={s.time}>{alert.time}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-        <View style={{ height: 32 }} />
-      </ScrollView>
+      {ALERTS.length === 0 ? (
+        <EmptyState
+          icon="notifications-outline"
+          title="No alerts"
+          description="We'll notify you about deadlines and new programs you qualify for"
+        />
+      ) : (
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {ALERTS.map((alert) => (
+            <TouchableOpacity accessibilityRole="button" key={alert.id} style={s.card}>
+              <View style={[s.iconBox, { backgroundColor: alert.color + '20' }]}>
+                <Ionicons name={alert.icon as any} size={22} color={alert.color} />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={s.cardTitle}>{alert.title}</Text>
+                <Text style={s.cardSub}>{alert.subtitle}</Text>
+                <Text style={s.time}>{alert.time}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+          <View style={{ height: 32 }} />
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
