@@ -23,7 +23,8 @@
       },
       "buildNumber": "1",
       "associatedDomains": [
-        "applinks:govpass.app"
+        "applinks:govpass.app",
+        "webcredentials:govpass.app"
       ]
     },
     "android": {
