@@ -8,18 +8,20 @@ import { router } from 'expo-router';
 import { isBiometricAvailable, getBiometricType, setBiometricEnabled, isBiometricEnabled } from '@/lib/biometrics';
 import { shareContent } from '@/lib/share';
 import LanguagePicker from '@/components/LanguagePicker';
-
-const MENU = [
-  { icon: 'notifications-outline', label: 'Notifications', value: 'On' },
-  { icon: 'shield-checkmark-outline', label: 'Privacy & Security', value: '' },
-  { icon: 'help-circle-outline', label: 'Help & Support', value: '' },
-  { icon: 'information-circle-outline', label: 'About GovPass', value: 'v1.0.0' },
-  { icon: 'gift-outline', label: 'Refer a Friend', value: '' },
-];
+import { useTranslation } from 'react-i18next';
 
 export default function SettingsScreen() {
+  const { t } = useTranslation();
   const { user, setSession, setUser } = useAuthStore();
   const uname = user?.email?.split('@')[0] ?? 'User';
+
+  const MENU = [
+    { icon: 'notifications-outline', label: t('settings.notifications'), value: t('settings.notificationsOn') },
+    { icon: 'shield-checkmark-outline', label: t('settings.privacySecurity'), value: '' },
+    { icon: 'help-circle-outline', label: t('settings.support'), value: '' },
+    { icon: 'information-circle-outline', label: t('settings.aboutApp'), value: 'v1.0.0' },
+    { icon: 'gift-outline', label: t('settings.referFriend'), value: '' },
+  ];
 
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnabled, setBiometricEnabledState] = useState(false);
@@ -46,12 +48,12 @@ export default function SettingsScreen() {
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Delete Account',
-      'This will permanently delete your account and all data. This cannot be undone.',
+      t('settings.deleteAccount'),
+      t('settings.deleteAccountConfirm'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete Forever',
+          text: t('settings.deleteForever'),
           style: 'destructive',
           onPress: async () => {
             await deleteAccount();
@@ -65,9 +67,9 @@ export default function SettingsScreen() {
   };
 
   const handleSignOut = async () => {
-    Alert.alert('Sign Out', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: async () => {
+    Alert.alert(t('settings.signOut'), t('settings.signOutConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('settings.signOut'), style: 'destructive', onPress: async () => {
         await signOut(); setSession(null); setUser(null); router.replace('/auth/login');
       }}
     ]);
@@ -76,7 +78,7 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#0A0F1E' }}>
       <ScrollView>
-        <Text style={s.header}>Settings</Text>
+        <Text style={s.header}>{t('settings.title')}</Text>
         <View style={s.profileCard}>
           <View style={s.avatar}><Text style={s.avatarText}>{uname[0]?.toUpperCase()}</Text></View>
           <View>
@@ -104,9 +106,9 @@ export default function SettingsScreen() {
               <Text style={s.biometricIcon}>{biometricType === 'face' ? '🔐' : '👆'}</Text>
               <View>
                 <Text style={s.biometricTitle}>
-                  {biometricType === 'face' ? 'Face ID' : 'Fingerprint'}
+                  {biometricType === 'face' ? t('settings.faceId') : t('settings.fingerprint')}
                 </Text>
-                <Text style={s.biometricSub}>Quick & secure sign-in</Text>
+                <Text style={s.biometricSub}>{t('settings.quickSecureSignIn')}</Text>
               </View>
             </View>
             <Switch
@@ -119,13 +121,13 @@ export default function SettingsScreen() {
         )}
         <TouchableOpacity accessibilityRole="button" style={s.signOutBtn} onPress={handleSignOut}>
           <Ionicons name="log-out-outline" size={20} color="#EF4444" />
-          <Text style={s.signOutText}>Sign Out</Text>
+          <Text style={s.signOutText}>{t('settings.signOut')}</Text>
         </TouchableOpacity>
         <View style={s.dangerZone}>
-          <Text style={s.dangerTitle}>Danger Zone</Text>
+          <Text style={s.dangerTitle}>{t('settings.dangerZone')}</Text>
           <TouchableOpacity accessibilityRole="button" style={s.deleteBtn} onPress={handleDeleteAccount}>
             <Ionicons name="trash-outline" size={18} color="#EF4444" />
-            <Text style={s.deleteText}>Delete Account</Text>
+            <Text style={s.deleteText}>{t('settings.deleteAccount')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

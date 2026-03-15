@@ -12,18 +12,13 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
 const STORAGE_KEY = '@govpass_user_type';
 
-const PERSONALIZATION_OPTIONS = [
-  'Myself — individual benefits',
-  'My family with children',
-  'A senior parent or relative',
-  'People with disabilities',
-  'Small business owner',
-];
+// Personalization options are defined inside the component to access t()
 
 interface Slide {
   emoji: string;
@@ -34,36 +29,46 @@ interface Slide {
   tag: string;
 }
 
-const slides: Slide[] = [
-  {
-    emoji: '🏛️',
-    title: 'Government benefits made simple',
-    description:
-      'GovPass AI scans 200+ federal and state programs to find benefits you qualify for right now — most users discover 3+ programs they never knew about',
-    bg: '#0f172a',
-    accentBg: '#1e293b',
-    tag: 'BENEFITS FINDER',
-  },
-  {
-    emoji: '🇺🇸',
-    title: 'Trusted by 89,000 Americans',
-    description:
-      'From SNAP to Medicare, Social Security to housing assistance, GovPass has helped users claim over $45M in government benefits they deserved',
-    bg: '#334155',
-    accentBg: '#1e3a5f',
-    tag: 'TRUSTED BY THOUSANDS',
-  },
-  {
-    emoji: '🤝',
-    title: 'Who are you looking for help?',
-    description: "GovPass personalizes its search to your situation",
-    bg: '#1e40af',
-    accentBg: '#1e3a5f',
-    tag: 'PERSONALIZE',
-  },
-];
+// Slides are defined inside the component to access t()
 
 export default function Onboarding() {
+  const { t } = useTranslation();
+
+  const PERSONALIZATION_OPTIONS = [
+    t('onboarding.option1'),
+    t('onboarding.option2'),
+    t('onboarding.option3'),
+    t('onboarding.option4'),
+    t('onboarding.option5'),
+  ];
+
+  const slides: Slide[] = [
+    {
+      emoji: '🏛️',
+      title: t('onboarding.slide1Title'),
+      description: t('onboarding.slide1Sub'),
+      bg: '#0f172a',
+      accentBg: '#1e293b',
+      tag: 'BENEFITS FINDER',
+    },
+    {
+      emoji: '🇺🇸',
+      title: t('onboarding.slide2Title'),
+      description: t('onboarding.slide2Sub'),
+      bg: '#334155',
+      accentBg: '#1e3a5f',
+      tag: 'TRUSTED BY THOUSANDS',
+    },
+    {
+      emoji: '🤝',
+      title: t('onboarding.slide3Title'),
+      description: t('onboarding.slide3Sub'),
+      bg: '#1e40af',
+      accentBg: '#1e3a5f',
+      tag: 'PERSONALIZE',
+    },
+  ];
+
   const [current, setCurrent] = useState(0);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -142,7 +147,7 @@ export default function Onboarding() {
       </View>
       {!isLast && (
         <Pressable style={styles.skipBtn} onPress={handleSkip}>
-          <Text style={styles.skipText}>Skip</Text>
+          <Text style={styles.skipText}>{t('onboarding.skip')}</Text>
         </Pressable>
       )}
       <Animated.View
@@ -226,12 +231,12 @@ export default function Onboarding() {
           }
         >
           <Text style={[styles.buttonText, isLast && canProceed && { color: slide.bg }]}>
-            {isLast ? '🚀  Get Started' : 'Continue →'}
+            {isLast ? t('onboarding.getStarted') : t('onboarding.continue') + ' →'}
           </Text>
         </Pressable>
       </Animated.View>
       <Text style={styles.stepCounter}>
-        {current + 1} of {slides.length}
+        {current + 1} {t('onboarding.of')} {slides.length}
       </Text>
     </View>
   );

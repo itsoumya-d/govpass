@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
 import { getEligiblePrograms, getUserApplications } from '@/lib/api';
+import { useTranslation } from 'react-i18next';
 
 const PRIMARY = '#1E40AF';
 const SECONDARY = '#059669';
@@ -61,6 +62,7 @@ function AnimatedProgressBar({ progress, color }: { progress: number; color: str
 }
 
 export default function HomeScreen() {
+  const { t } = useTranslation();
   const { user } = useAuthStore();
   const [programs, setPrograms] = useState<any[]>([]);
   const [applications, setApplications] = useState<any[]>([]);
@@ -103,7 +105,7 @@ export default function HomeScreen() {
             <Text style={styles.headerTitle}>
               Gov<Text style={{ color: PRIMARY }}>Pass</Text>
             </Text>
-            <Text style={styles.headerSubtitle}>Your benefits navigator</Text>
+            <Text style={styles.headerSubtitle}>{t('home.benefitsNavigator')}</Text>
           </View>
           <TouchableOpacity accessibilityRole="button" style={styles.notifBtn}>
             <Ionicons name="notifications-outline" size={24} color="#FFFFFF" />
@@ -118,11 +120,11 @@ export default function HomeScreen() {
               <Ionicons name="sparkles" size={18} color="#FFFFFF" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.alertTitle}>New Benefits Available</Text>
-              <Text style={styles.alertSub}>3 programs match your recent profile update</Text>
+              <Text style={styles.alertTitle}>{t('home.newBenefitsAvailable')}</Text>
+              <Text style={styles.alertSub}>{t('home.programsMatchProfile')}</Text>
             </View>
             <TouchableOpacity accessibilityRole="button" style={styles.alertAction}>
-              <Text style={styles.alertActionText}>View</Text>
+              <Text style={styles.alertActionText}>{t('home.view')}</Text>
             </TouchableOpacity>
           </Animated.View>
         )}
@@ -131,7 +133,7 @@ export default function HomeScreen() {
         <Animated.View entering={FadeInDown.duration(450).delay(150)} style={styles.summaryCard}>
           <View style={styles.summaryTop}>
             <View>
-              <Text style={styles.summaryLabel}>You may qualify for</Text>
+              <Text style={styles.summaryLabel}>{t('home.youMayQualifyFor')}</Text>
               <Text style={styles.summaryNumber}>{programs.length} program{programs.length !== 1 ? 's' : ''}</Text>
             </View>
             <View style={styles.summaryIconContainer}>
@@ -142,24 +144,24 @@ export default function HomeScreen() {
           <View style={styles.summaryStats}>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{programs.length}</Text>
-              <Text style={styles.statLabel}>Est. programs</Text>
+              <Text style={styles.statLabel}>{t('home.estPrograms')}</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{activeApplications.length}</Text>
-              <Text style={styles.statLabel}>Active applications</Text>
+              <Text style={styles.statLabel}>{t('home.activeApplications')}</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Text style={[styles.statValue, { color: '#059669' }]}>{approvedCount}</Text>
-              <Text style={styles.statLabel}>Approved</Text>
+              <Text style={styles.statLabel}>{t('home.approved')}</Text>
             </View>
           </View>
         </Animated.View>
 
         {/* Quick Actions */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <Text style={styles.sectionTitle}>{t('home.quickActions')}</Text>
         </View>
         <View style={styles.quickActionsRow}>
           <TouchableOpacity accessibilityRole="button"
@@ -170,14 +172,14 @@ export default function HomeScreen() {
             <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(30, 64, 175, 0.15)' }]}>
               <Ionicons name="camera" size={22} color={PRIMARY} />
             </View>
-            <Text style={styles.quickActionText}>Scan Doc</Text>
+            <Text style={styles.quickActionText}>{t('home.scanDoc')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity accessibilityRole="button" style={styles.quickAction} activeOpacity={0.8}>
             <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(5, 150, 105, 0.15)' }]}>
               <Ionicons name="search" size={22} color={SECONDARY} />
             </View>
-            <Text style={styles.quickActionText}>Browse Benefits</Text>
+            <Text style={styles.quickActionText}>{t('home.browseBenefits')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity accessibilityRole="button"
@@ -188,22 +190,22 @@ export default function HomeScreen() {
             <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(124, 58, 237, 0.15)' }]}>
               <Ionicons name="document-text" size={22} color="#7C3AED" />
             </View>
-            <Text style={styles.quickActionText}>My Applications</Text>
+            <Text style={styles.quickActionText}>{t('home.myApplications')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Benefits You May Qualify For */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Benefits You May Qualify For</Text>
+          <Text style={styles.sectionTitle}>{t('home.benefitsYouMayQualifyFor')}</Text>
           <TouchableOpacity>
-            <Text style={styles.seeAllText}>See all</Text>
+            <Text style={styles.seeAllText}>{t('home.seeAll')}</Text>
           </TouchableOpacity>
         </View>
 
         {programs.length === 0 ? (
           <View style={{ paddingHorizontal: 20, paddingVertical: 16 }}>
             <Text style={{ color: '#8E8E93', fontSize: 14, textAlign: 'center' }}>
-              No programs found. Complete your profile to see eligible programs.
+              {t('home.noPrograms')}
             </Text>
           </View>
         ) : (
@@ -254,7 +256,7 @@ export default function HomeScreen() {
 
                     {/* Animated completion progress bar */}
                     <View style={styles.completionRow}>
-                      <Text style={styles.completionLabel}>Application completion</Text>
+                      <Text style={styles.completionLabel}>{t('home.applicationCompletion')}</Text>
                       <Text style={[styles.completionPct, { color: programColor }]}>{completionPct}%</Text>
                     </View>
                     <AnimatedProgressBar progress={completionPct} color={programColor} />
@@ -288,16 +290,16 @@ export default function HomeScreen() {
 
         {/* Active Applications */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Active Applications</Text>
+          <Text style={styles.sectionTitle}>{t('home.activeApps')}</Text>
           <TouchableOpacity accessibilityRole="button" onPress={() => router.push('/(tabs)/applications')}>
-            <Text style={styles.seeAllText}>See all</Text>
+            <Text style={styles.seeAllText}>{t('home.seeAll')}</Text>
           </TouchableOpacity>
         </View>
 
         {applications.length === 0 ? (
           <View style={{ paddingHorizontal: 20, paddingVertical: 16 }}>
             <Text style={{ color: '#8E8E93', fontSize: 14, textAlign: 'center' }}>
-              No applications yet. Apply to a program to get started.
+              {t('home.noApps')}
             </Text>
           </View>
         ) : (
