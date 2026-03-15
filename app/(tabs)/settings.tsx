@@ -10,6 +10,8 @@ import { shareContent } from '@/lib/share';
 import LanguagePicker from '@/components/LanguagePicker';
 import { useTranslation } from 'react-i18next';
 
+import { NotificationPreferences } from '@/components/NotificationPreferences';
+
 export default function SettingsScreen() {
   const { t } = useTranslation();
   const { user, setSession, setUser } = useAuthStore();
@@ -24,6 +26,8 @@ export default function SettingsScreen() {
   ];
 
   const [biometricAvailable, setBiometricAvailable] = useState(false);
+
+  const [showNotifPrefs, setShowNotifPrefs] = useState(false);
   const [biometricEnabled, setBiometricEnabledState] = useState(false);
   const [biometricType, setBiometricTypeState] = useState<'face' | 'fingerprint' | 'none'>('none');
 
@@ -131,7 +135,9 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    
+      <NotificationPreferences visible={showNotifPrefs} onClose={() => setShowNotifPrefs(false)} />
+      </SafeAreaView>
   );
 }
 
