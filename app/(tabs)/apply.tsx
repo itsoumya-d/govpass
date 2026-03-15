@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
+import { triggerReview } from '@/lib/review';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -55,7 +56,7 @@ export default function ApplicationFlowScreen() {
         )}
         <TouchableOpacity accessibilityRole="button"
           style={[styles.nextBtn, { backgroundColor: PRIMARY }]}
-          onPress={() => { if (step < STEPS.length - 1) setStep(s => s + 1); }}
+          onPress={() => { if (step < STEPS.length - 1) setStep(s => s + 1); else triggerReview(); }}
         >
           <Text style={styles.nextBtnText}>{step === STEPS.length - 1 ? 'Submit Application' : 'Continue'}</Text>
         </TouchableOpacity>
