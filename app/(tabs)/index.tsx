@@ -6,7 +6,10 @@ import Animated, {
   FadeInDown,
   useSharedValue,
   withTiming,
+  withRepeat,
+  withSequence,
   useAnimatedStyle,
+  cancelAnimation,
   Easing,
 } from 'react-native-reanimated';
 import { SkeletonFeed, SkeletonKPI } from '@/components/SkeletonLoader';
@@ -67,6 +70,34 @@ function getDeadlineUrgency(daysRemaining: number): { color: string; bg: string;
     return { color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.15)', label: `${daysRemaining}d left` };
   }
   return { color: '#22C55E', bg: 'rgba(34, 197, 94, 0.15)', label: `${daysRemaining}d left` };
+}
+
+function DeadlineBadge({ daysRemaining }: { daysRemaining: number }) {
+  const urgency = getDeadlineUrgency(daysRemaining);
+  const opacity = useSharedValue(1);
+
+  useEffect(() => {
+    if (daysRemaining <= 7) {
+      opacity.value = withRepeat(
+        withSequence(withTiming(0.4, { duration: 600 }), withTiming(1, { duration: 600 })),
+        -1,
+        false
+      );
+    } else {
+      cancelAnimation(opacity);
+      opacity.value = 1;
+    }
+    return () => cancelAnimation(opacity);
+  }, [daysRemaining]);
+
+  const pulseStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+
+  return (
+    <Animated.View style={[styles.deadlineBadge, { backgroundColor: urgency.bg }, pulseStyle]}>
+      <Ionicons name="time-outline" size={11} color={urgency.color} />
+      <Text style={[styles.deadlineText, { color: urgency.color }]}>{urgency.label}</Text>
+    </Animated.View>
+  );
 }
 
 // Animated counter that counts up from 0 to target with ease-out cubic
@@ -349,13 +380,8 @@ export default function HomeScreen() {
                     <View style={styles.benefitTopRow}>
                       <Text style={styles.benefitName}>{program.name}</Text>
                       <View style={styles.benefitRightCol}>
-                        {/* Deadline countdown badge */}
-                        <View style={[styles.deadlineBadge, { backgroundColor: urgency.bg }]}>
-                          <Ionicons name="time-outline" size={11} color={urgency.color} />
-                          <Text style={[styles.deadlineText, { color: urgency.color }]}>
-                            {urgency.label}
-                          </Text>
-                        </View>
+                        {/* Deadline countdown badge — pulses when ≤7 days remain */}
+                        <DeadlineBadge daysRemaining={daysRemaining} />
                         <View style={styles.benefitAmountContainer}>
                           <Text style={[styles.benefitAmount, { color: programColor }]}>
                             {program.benefit_amount ?? ''}
