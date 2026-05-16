@@ -1,7 +1,8 @@
 import { Stack, usePathname } from 'expo-router';
-import { View, TouchableOpacity, Text } from 'react-native';
+import { View, Text } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import PressableScale from '@/components/PressableScale';
 
 const PAGES = [
   '/onboarding/welcome',
@@ -24,9 +25,9 @@ export default function OnboardingLayout() {
         {/* Header with skip button */}
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 24, paddingTop: 8 }}>
           {currentIndex > 0 && currentIndex < PAGES.length - 1 && (
-            <TouchableOpacity accessibilityRole="button" onPress={handleSkip} style={{ paddingVertical: 8, paddingHorizontal: 16 }}>
+            <PressableScale haptic="light" accessibilityRole="button" onPress={handleSkip} style={{ paddingVertical: 8, paddingHorizontal: 16 }}>
               <Text style={{ color: '#8E8E93', fontSize: 16, fontWeight: '500' }}>Skip</Text>
-            </TouchableOpacity>
+            </PressableScale>
           )}
         </View>
 

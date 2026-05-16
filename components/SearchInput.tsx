@@ -1,15 +1,18 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { View, TextInput, TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
+import { View, TextInput, StyleSheet, ViewStyle } from 'react-native';
+import PressableScale from '@/components/PressableScale';
 import { Ionicons } from '@expo/vector-icons';
+import { VoiceRecordButton } from './VoiceRecordButton';
 
 interface SearchInputProps {
   onSearch: (query: string) => void;
   placeholder?: string;
   debounceMs?: number;
   style?: ViewStyle;
+  voice?: boolean;
 }
 
-export function SearchInput({ onSearch, placeholder = 'Search...', debounceMs = 300, style }: SearchInputProps) {
+export function SearchInput({ onSearch, placeholder = 'Search...', debounceMs = 300, style, voice = false }: SearchInputProps) {
   const [value, setValue] = useState('');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleChange = useCallback((text: string) => {
@@ -23,9 +26,12 @@ export function SearchInput({ onSearch, placeholder = 'Search...', debounceMs = 
       <Ionicons name="search" size={18} color="#9CA3AF" style={styles.icon} />
       <TextInput value={value} onChangeText={handleChange} placeholder={placeholder} placeholderTextColor="#9CA3AF" style={styles.input} returnKeyType="search" clearButtonMode="never" />
       {value.length > 0 && (
-        <TouchableOpacity accessibilityRole="button" onPress={handleClear} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <PressableScale haptic="light" accessibilityRole="button" onPress={handleClear} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Ionicons name="close-circle" size={18} color="#9CA3AF" />
-        </TouchableOpacity>
+        </PressableScale>
+      )}
+      {voice && (
+        <VoiceRecordButton onTranscript={(text) => handleChange(text)} />
       )}
     </View>
   );

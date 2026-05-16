@@ -64,3 +64,21 @@ export async function shareMultipleResults(results: EligibilityResult[]): Promis
   await Haptics.selectionAsync();
   await Share.share({ message: lines.join('\n'), title: 'My GovPass Eligibility Results' });
 }
+
+export interface ShareOptions {
+  title: string;
+  message: string;
+  url?: string;
+}
+
+export async function shareContent(options: ShareOptions): Promise<boolean> {
+  try {
+    const result = await Share.share({
+      title: options.title,
+      message: options.url ? `${options.message}\n\n${options.url}` : options.message,
+    });
+    return result.action === Share.sharedAction;
+  } catch {
+    return false;
+  }
+}

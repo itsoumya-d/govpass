@@ -1,48 +1,74 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { View, StyleSheet } from 'react-native';
+import { useColorScheme, Platform } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
+import AnimatedTabIcon from '@/components/AnimatedTabIcon';
 
-const PRIMARY = '#1E40AF';
-
-export default function TabsLayout() {
+export default function TabLayout() {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
   const { t } = useTranslation();
+
+  const activeColor = '#1D4ED8';
+  const bgColor = isDark ? '#0A0F1E' : '#FFFFFF';
+  const borderColor = isDark ? '#1E293B' : '#E5E7EB';
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#1C1C1E',
-          borderTopColor: '#38383A',
-          borderTopWidth: 1,
-          paddingBottom: 4,
-          height: 60,
+          backgroundColor: bgColor,
+          borderTopColor: borderColor,
+          borderTopWidth: 0.5,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+          paddingTop: 8,
+          height: Platform.OS === 'ios' ? 88 : 64,
+          elevation: 0,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -1 },
+          shadowOpacity: 0.05,
+          shadowRadius: 4,
         },
-        tabBarActiveTintColor: PRIMARY,
-        tabBarInactiveTintColor: '#636366',
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '500',
-          marginBottom: 2,
-        },
+        tabBarActiveTintColor: activeColor,
+        tabBarInactiveTintColor: isDark ? '#64748B' : '#94A3B8',
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '600', letterSpacing: 0.2 },
+      }}
+      screenListeners={{
+        tabPress: () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light),
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: t('tabs.home'),
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" size={size} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <AnimatedTabIcon focused={focused} color={color}>
+              <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
+            </AnimatedTabIcon>
           ),
         }}
       />
       <Tabs.Screen
-        name="scan"
+        name="eligibility"
         options={{
-          title: t('tabs.scan'),
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="camera-outline" size={size} color={color} />
+          title: t('tabs.eligibility'),
+          tabBarIcon: ({ color, focused }) => (
+            <AnimatedTabIcon focused={focused} color={color}>
+              <Ionicons name={focused ? 'checkmark-circle' : 'checkmark-circle-outline'} size={24} color={color} />
+            </AnimatedTabIcon>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="apply"
+        options={{
+          title: t('tabs.apply'),
+          tabBarIcon: ({ color, focused }) => (
+            <AnimatedTabIcon focused={focused} color={color}>
+              <Ionicons name={focused ? 'send' : 'send-outline'} size={24} color={color} />
+            </AnimatedTabIcon>
           ),
         }}
       />
@@ -50,17 +76,10 @@ export default function TabsLayout() {
         name="applications"
         options={{
           title: t('tabs.applications'),
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="document-text-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="alerts"
-        options={{
-          title: t('tabs.alerts'),
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="notifications-outline" size={size} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <AnimatedTabIcon focused={focused} color={color}>
+              <Ionicons name={focused ? 'document-text' : 'document-text-outline'} size={24} color={color} />
+            </AnimatedTabIcon>
           ),
         }}
       />
@@ -68,13 +87,17 @@ export default function TabsLayout() {
         name="settings"
         options={{
           title: t('tabs.settings'),
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings-outline" size={size} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <AnimatedTabIcon focused={focused} color={color}>
+              <Ionicons name={focused ? 'settings' : 'settings-outline'} size={24} color={color} />
+            </AnimatedTabIcon>
           ),
         }}
       />
-      <Tabs.Screen name="eligibility" options={{ href: null }} />
-      <Tabs.Screen name="apply" options={{ href: null }} />
+
+      {/* Hidden tabs — accessible via stack navigation */}
+      <Tabs.Screen name="scan" options={{ href: null }} />
+      <Tabs.Screen name="alerts" options={{ href: null }} />
     </Tabs>
   );
 }

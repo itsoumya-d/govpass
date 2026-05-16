@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking,
+  View, Text, ScrollView, StyleSheet, Linking,
 } from 'react-native';
+import PressableScale from '@/components/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -9,6 +10,7 @@ import {
   checkEligibility, type UserProfile, type EligibleProgram,
 } from '../../lib/eligibility-engine';
 import { shareMultipleResults } from '../../lib/share';
+import { supabase } from '../../lib/supabase';
 
 const PRIMARY = '#1E40AF';
 const BG = '#0F172A';
@@ -50,30 +52,52 @@ function programStatus(p: EligibleProgram): 'eligible' | 'maybe' | 'ineligible' 
 export default function EligibilityResultsScreen() {
   const [filter, setFilter] = useState<FilterTab>('all');
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [programs, setPrograms] = useState<EligibleProgram[]>([]);
 
   // Accept serialized profile from navigation params (set by eligibility.tsx if navigating here)
   const params = useLocalSearchParams<{ profile?: string }>();
 
-  const programs = useMemo<EligibleProgram[]>(() => {
+  useEffect(() => {
     if (params.profile) {
       try {
         const profile = JSON.parse(params.profile) as UserProfile;
-        return checkEligibility(profile);
+        setPrograms(checkEligibility(profile));
+        return;
       } catch {
-        // fall through to defaults
+        // fall through to fetching saved profile
       }
     }
-    // Default demo profile: single adult, $20k income, CA renter
-    const defaultProfile: UserProfile = {
-      householdSize: 1, annualIncome: 20000, state: 'CA', age: 30,
-      hasChildren: false, childrenUnder5: false, childrenUnder18: 0,
-      pregnant: false, disabled: false, veteran: false, elderly: false,
-      citizen: true, legalResident: false, unemployed: false,
-      receivingSSI: false, receivingTANF: false,
-      housingType: 'renting', monthlyRent: 1200,
-      hasHealthInsurance: false, selfEmployed: false,
-    };
-    return checkEligibility(defaultProfile);
+    // Fetch the user's saved profile from Supabase
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase.from('profiles').select('*').eq('id', user.id).single()
+        .then(({ data }) => {
+          if (!data) return;
+          const profile: UserProfile = {
+            householdSize: data.household_size ?? 1,
+            annualIncome: data.annual_income ?? 0,
+            state: data.state ?? 'CA',
+            age: data.age ?? 18,
+            hasChildren: data.has_children ?? false,
+            childrenUnder5: data.children_under_5 ?? false,
+            childrenUnder18: data.children_under_18 ?? 0,
+            pregnant: data.pregnant ?? false,
+            disabled: data.disabled ?? false,
+            veteran: data.veteran ?? false,
+            elderly: data.elderly ?? false,
+            citizen: data.citizen ?? false,
+            legalResident: data.legal_resident ?? false,
+            unemployed: data.unemployed ?? false,
+            receivingSSI: data.receiving_ssi ?? false,
+            receivingTANF: data.receiving_tanf ?? false,
+            housingType: data.housing_type ?? 'renting',
+            monthlyRent: data.monthly_rent ?? 0,
+            hasHealthInsurance: data.has_health_insurance ?? false,
+            selfEmployed: data.self_employed ?? false,
+          };
+          setPrograms(checkEligibility(profile));
+        });
+    });
   }, [params.profile]);
 
   const withStatus = programs.map(p => ({ ...p, uiStatus: programStatus(p) }));
@@ -95,12 +119,11 @@ export default function EligibilityResultsScreen() {
     <SafeAreaView style={s.safe} edges={['top']}>
       {/* Header */}
       <View style={s.header}>
-        <TouchableOpacity accessibilityRole="button" onPress={() => router.back()} style={s.backBtn}>
+        <PressableScale haptic="light" onPress={() => router.back()} style={s.backBtn}>
           <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
-        </TouchableOpacity>
+        </PressableScale>
         <Text style={s.headerTitle}>Eligibility Results</Text>
-        <TouchableOpacity
-          accessibilityRole="button"
+        <PressableScale haptic="light"
           accessibilityLabel="Share eligibility results"
           style={s.shareBtn}
           onPress={() =>
@@ -113,13 +136,13 @@ export default function EligibilityResultsScreen() {
                     : p.uiStatus === 'maybe'
                     ? 'pending'
                     : 'ineligible',
-                benefit: p.uiStatus !== 'ineligible' ? p.estimatedBenefit : undefined,
+                benefit: p.uiStatus !== 'ineligible' ? (p.estimatedBenefit ?? undefined) : undefined,
               }))
             )
           }
         >
           <Ionicons name="share-outline" size={22} color="#FFFFFF" />
-        </TouchableOpacity>
+        </PressableScale>
       </View>
 
       {/* Total Benefit Banner */}
@@ -141,14 +164,13 @@ export default function EligibilityResultsScreen() {
         contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingBottom: 12 }}
       >
         {FILTERS.map(f => (
-          <TouchableOpacity
-            accessibilityRole="button"
+          <PressableScale haptic="light"
             key={f.id}
             onPress={() => setFilter(f.id)}
             style={[s.filterTab, filter === f.id && s.filterTabActive]}
           >
             <Text style={[s.filterTabText, filter === f.id && s.filterTabTextActive]}>{f.label}</Text>
-          </TouchableOpacity>
+          </PressableScale>
         ))}
       </ScrollView>
 
@@ -160,12 +182,10 @@ export default function EligibilityResultsScreen() {
           const catIcon = (CATEGORY_ICONS[prog.category] ?? 'star') as never;
 
           return (
-            <TouchableOpacity
-              accessibilityRole="button"
+            <PressableScale haptic="light"
               key={prog.id}
               style={s.programCard}
               onPress={() => setExpanded(isExpanded ? null : prog.id)}
-              activeOpacity={0.8}
             >
               {/* Program Header */}
               <View style={s.programHeader}>
@@ -218,21 +238,32 @@ export default function EligibilityResultsScreen() {
                     </View>
                   )}
 
-                  {/* Apply Now button — opens real USAGov / federal application URL */}
+                  {/* Apply Now button — guided in-app application flow */}
                   {status !== 'ineligible' && (
-                    <TouchableOpacity
-                      accessibilityRole="button"
-                      accessibilityLabel={`Apply for ${prog.name} on government website`}
+                    <PressableScale haptic="medium"
+                      accessibilityLabel={`Apply for ${prog.name}`}
                       style={[s.applyBtn, { backgroundColor: status === 'eligible' ? PRIMARY : WARN }]}
-                      onPress={() => Linking.openURL(prog.applicationUrl)}
+                      onPress={() => {
+                        // Map eligibility-engine IDs to our 5 supported programs
+                        const SUPPORTED_PROGRAMS: Record<string, string> = {
+                          snap: 'SNAP', medicaid: 'Medicaid', ssi: 'SSI', liheap: 'LIHEAP', wic: 'WIC',
+                        };
+                        const programId = SUPPORTED_PROGRAMS[prog.id];
+                        if (programId) {
+                          router.push({ pathname: '/(tabs)/apply', params: { program: programId } });
+                        } else {
+                          // For programs without an in-app wizard, open the official site
+                          Linking.openURL(prog.applicationUrl);
+                        }
+                      }}
                     >
                       <Text style={s.applyBtnText}>Apply Now</Text>
-                      <Ionicons name="open-outline" size={16} color="#FFFFFF" />
-                    </TouchableOpacity>
+                      <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+                    </PressableScale>
                   )}
                 </View>
               )}
-            </TouchableOpacity>
+            </PressableScale>
           );
         })}
 

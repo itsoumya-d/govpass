@@ -1,24 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, TextInput,
-  StyleSheet, Alert,
+  View, Text, ScrollView, TextInput,
+  StyleSheet, ActivityIndicator,
 } from 'react-native';
+import PressableScale from '@/components/PressableScale';
+import { useToast } from '@/lib/useToast';
+import Toast from '@/components/Toast';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useAuthStore } from '@/store/auth';
+import { getEligiblePrograms } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 
 const PRIMARY = '#1E40AF';
 const BG = '#0F172A';
 const CARD = '#1E293B';
 const BORDER = '#334155';
 const SUCCESS = '#10B981';
-
-const PROGRAMS = [
-  { id: '1', name: 'SNAP Food Assistance', agency: 'USDA', value: '$288/month' },
-  { id: '2', name: 'Medicaid Health Coverage', agency: 'CMS', value: 'Comprehensive coverage' },
-  { id: '5', name: 'Pell Grant', agency: 'Dept of Ed', value: 'Up to $7,395/year' },
-  { id: '3', name: 'LIHEAP Energy Assistance', agency: 'HHS', value: 'Up to $900/year' },
-];
 
 const DOCUMENTS = [
   { id: 'id', label: 'Government-issued ID', required: true, icon: 'card' as const },
@@ -31,24 +30,47 @@ const DOCUMENTS = [
 
 export default function NewApplicationScreen() {
   const params = useLocalSearchParams<{ programId?: string; programName?: string }>();
+  const { user } = useAuthStore();
+  const { toast, showToast, hideToast } = useToast();
 
+  const [programs, setPrograms] = useState<any[]>([]);
+  const [loadingPrograms, setLoadingPrograms] = useState(true);
   const [step, setStep] = useState(1);
   const [selectedProgram, setSelectedProgram] = useState(params.programId || '');
   const [uploadedDocs, setUploadedDocs] = useState<Set<string>>(new Set());
 
-  // Step 2 personal info
-  const [firstName, setFirstName] = useState('John');
-  const [lastName, setLastName] = useState('Davis');
-  const [dob, setDob] = useState('1985-06-15');
-  const [ssn, setSsn] = useState('***-**-****');
-  const [address, setAddress] = useState('123 Main St, Austin, TX 78701');
-  const [phone, setPhone] = useState('(512) 555-0192');
-  const [email, setEmail] = useState('john.davis@email.com');
+  // Step 2 personal info — pre-filled from user metadata if available
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [dob, setDob] = useState('');
+  const [ssn, setSsn] = useState('');
+  const [address, setAddress] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState(user?.email ?? '');
+
+  useEffect(() => {
+    getEligiblePrograms().then(({ data }) => {
+      if (data) setPrograms(data);
+    }).finally(() => setLoadingPrograms(false));
+  }, []);
+
+  // Auto-fill from saved profile
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('profiles').select('*').eq('id', user.id).single().then(({ data }) => {
+      if (!data) return;
+      if (data.first_name) setFirstName(data.first_name);
+      if (data.last_name) setLastName(data.last_name);
+      if (data.date_of_birth) setDob(data.date_of_birth);
+      if (data.phone) setPhone(data.phone);
+      if (data.address) setAddress(data.address);
+    });
+  }, [user]);
 
   const TOTAL_STEPS = 4;
   const progress = (step / TOTAL_STEPS) * 100;
 
-  const program = PROGRAMS.find(p => p.id === selectedProgram);
+  const program = programs.find(p => p.id === selectedProgram);
 
   const toggleDoc = (id: string) => {
     const updated = new Set(uploadedDocs);
@@ -59,18 +81,40 @@ export default function NewApplicationScreen() {
 
   const handleNext = () => {
     if (step === 1 && !selectedProgram) {
-      Alert.alert('Select Program', 'Please select a program to apply for.');
+      showToast('Please select a program to apply for.', 'error');
       return;
     }
     if (step < TOTAL_STEPS) setStep(step + 1);
   };
 
-  const handleSubmit = () => {
-    Alert.alert(
-      'Application Submitted',
-      `Your ${program?.name} application has been submitted. You will receive a confirmation email within 24 hours.`,
-      [{ text: 'Done', onPress: () => router.replace('/(tabs)/applications') }]
-    );
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!user) { showToast('Not signed in', 'error'); return; }
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.from('applications').insert({
+        user_id: user.id,
+        program: program?.name ?? selectedProgram,
+        program_id: selectedProgram || null,
+        status: 'submitted',
+        first_name: firstName,
+        last_name: lastName,
+        date_of_birth: dob || null,
+        phone,
+        email,
+        address,
+        documents_uploaded: uploadedDocs.size,
+        submitted_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+      showToast(`Your ${program?.name ?? 'application'} has been submitted. You will receive a confirmation email within 24 hours.`, 'success');
+      router.replace('/(tabs)/applications');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : 'Could not submit. Please try again.', 'error');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const STEP_LABELS = ['Program', 'Personal Info', 'Documents', 'Review'];
@@ -79,12 +123,12 @@ export default function NewApplicationScreen() {
     <SafeAreaView style={s.safe} edges={['top']}>
       {/* Header */}
       <View style={s.header}>
-        <TouchableOpacity accessibilityRole="button"
+        <PressableScale haptic="light"
           onPress={() => step === 1 ? router.back() : setStep(step - 1)}
           style={s.backBtn}
         >
           <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
-        </TouchableOpacity>
+        </PressableScale>
         <Text style={s.headerTitle}>New Application</Text>
         <View style={{ width: 40 }} />
       </View>
@@ -120,8 +164,10 @@ export default function NewApplicationScreen() {
           <View>
             <Text style={s.stepTitle}>Select a Program</Text>
             <Text style={s.stepSubtitle}>Choose the benefit program you want to apply for.</Text>
-            {PROGRAMS.map(prog => (
-              <TouchableOpacity accessibilityRole="button"
+            {loadingPrograms ? (
+              <ActivityIndicator color={PRIMARY} style={{ marginTop: 24 }} />
+            ) : programs.map(prog => (
+              <PressableScale haptic="light"
                 key={prog.id}
                 style={[s.programCard, selectedProgram === prog.id && s.programCardSelected]}
                 onPress={() => setSelectedProgram(prog.id)}
@@ -129,8 +175,10 @@ export default function NewApplicationScreen() {
                 <View style={s.programCardInner}>
                   <View style={{ flex: 1 }}>
                     <Text style={s.programName}>{prog.name}</Text>
-                    <Text style={s.programAgency}>{prog.agency}</Text>
-                    <Text style={s.programValue}>{prog.value}</Text>
+                    <Text style={s.programAgency}>{prog.agency ?? prog.category ?? ''}</Text>
+                    <Text style={s.programValue}>
+                      {prog.max_benefit_annual ? `Up to $${prog.max_benefit_annual.toLocaleString()}/year` : prog.annual_value ? `$${prog.annual_value.toLocaleString()}/year` : ''}
+                    </Text>
                   </View>
                   <View style={[
                     s.radioCircle,
@@ -141,7 +189,7 @@ export default function NewApplicationScreen() {
                     )}
                   </View>
                 </View>
-              </TouchableOpacity>
+              </PressableScale>
             ))}
           </View>
         )}
@@ -193,7 +241,7 @@ export default function NewApplicationScreen() {
                       {uploaded ? 'Uploaded' : doc.required ? 'Required' : 'Optional'}
                     </Text>
                   </View>
-                  <TouchableOpacity accessibilityRole="button"
+                  <PressableScale haptic="light"
                     style={[s.uploadBtn, uploaded && { backgroundColor: SUCCESS + '20', borderColor: SUCCESS }]}
                     onPress={() => toggleDoc(doc.id)}
                   >
@@ -205,7 +253,7 @@ export default function NewApplicationScreen() {
                     <Text style={[s.uploadBtnText, uploaded && { color: SUCCESS }]}>
                       {uploaded ? 'Done' : 'Upload'}
                     </Text>
-                  </TouchableOpacity>
+                  </PressableScale>
                 </View>
               );
             })}
@@ -221,7 +269,7 @@ export default function NewApplicationScreen() {
             <View style={s.reviewCard}>
               <Text style={s.reviewSectionTitle}>Program</Text>
               <Text style={s.reviewValue}>{program?.name || 'Not selected'}</Text>
-              <Text style={s.reviewMeta}>{program?.agency} · {program?.value}</Text>
+              <Text style={s.reviewMeta}>{program?.agency ?? program?.category ?? ''}</Text>
             </View>
 
             <View style={s.reviewCard}>
@@ -257,20 +305,28 @@ export default function NewApplicationScreen() {
 
       {/* Bottom CTA */}
       <View style={s.bottomBar}>
-        <TouchableOpacity accessibilityRole="button"
-          style={s.nextBtn}
+        <PressableScale haptic="medium"
+          style={[s.nextBtn, submitting && { opacity: 0.7 }]}
           onPress={step === TOTAL_STEPS ? handleSubmit : handleNext}
+          disabled={submitting}
         >
-          <Text style={s.nextBtnText}>
-            {step === TOTAL_STEPS ? 'Submit Application' : 'Continue'}
-          </Text>
-          <Ionicons
-            name={step === TOTAL_STEPS ? 'send' : 'arrow-forward'}
-            size={18}
-            color="#FFFFFF"
-          />
-        </TouchableOpacity>
+          {submitting ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <>
+              <Text style={s.nextBtnText}>
+                {step === TOTAL_STEPS ? 'Submit Application' : 'Continue'}
+              </Text>
+              <Ionicons
+                name={step === TOTAL_STEPS ? 'send' : 'arrow-forward'}
+                size={18}
+                color="#FFFFFF"
+              />
+            </>
+          )}
+        </PressableScale>
       </View>
+      <Toast {...toast} onHide={hideToast} />
     </SafeAreaView>
   );
 }

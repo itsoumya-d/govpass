@@ -1,52 +1,48 @@
-import React from 'react';
-import { TouchableOpacity, Text, ActivityIndicator, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
+import PressableScale from './PressableScale';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 interface LoadingButtonProps {
   onPress: () => void;
-  label: string;
   loading?: boolean;
   disabled?: boolean;
-  variant?: 'primary' | 'secondary' | 'danger';
+  label: string;
+  loadingLabel?: string;
+  primaryColor?: string;
   style?: ViewStyle;
   textStyle?: TextStyle;
+  haptic?: 'light' | 'medium' | 'heavy';
 }
 
-export function LoadingButton({
-  onPress,
-  label,
-  loading = false,
-  disabled = false,
-  variant = 'primary',
-  style,
-  textStyle,
+export default function LoadingButton({
+  onPress, loading = false, disabled = false, label, loadingLabel, primaryColor = '#6366F1', style, textStyle, haptic = 'medium',
 }: LoadingButtonProps) {
   const isDisabled = loading || disabled;
-  const containerStyle = [
-    styles.button,
-    variant === 'primary' && styles.primary,
-    variant === 'secondary' && styles.secondary,
-    variant === 'danger' && styles.danger,
-    isDisabled && styles.disabled,
-    style,
-  ];
-  const labelStyle = [styles.label, variant === 'secondary' && styles.labelSecondary, textStyle];
+
   return (
-    <TouchableOpacity accessibilityRole="button" style={containerStyle} onPress={onPress} disabled={isDisabled} activeOpacity={0.75}>
+    <PressableScale
+      onPress={onPress}
+      disabled={isDisabled}
+      haptic={isDisabled ? 'none' : haptic}
+      style={[styles.btn, { backgroundColor: isDisabled ? '#94A3B8' : primaryColor }, style]}
+      scale={0.97}
+    >
       {loading ? (
-        <ActivityIndicator size="small" color={variant === 'secondary' ? '#3B82F6' : '#FFFFFF'} />
+        <Animated.View entering={FadeIn.duration(150)} style={styles.loadingRow}>
+          <ActivityIndicator color="#FFFFFF" size="small" />
+          {loadingLabel && <Text style={[styles.label, textStyle]}>{loadingLabel}</Text>}
+        </Animated.View>
       ) : (
-        <Text style={labelStyle}>{label}</Text>
+        <Animated.Text entering={FadeIn.duration(150)} style={[styles.label, textStyle]}>{label}</Animated.Text>
       )}
-    </TouchableOpacity>
+    </PressableScale>
   );
 }
 
+export { LoadingButton };
+
 const styles = StyleSheet.create({
-  button: { height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
-  primary: { backgroundColor: '#3B82F6' },
-  secondary: { backgroundColor: '#F3F4F6', borderWidth: 1.5, borderColor: '#E5E7EB' },
-  danger: { backgroundColor: '#EF4444' },
-  disabled: { opacity: 0.5 },
-  label: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
-  labelSecondary: { color: '#374151' },
+  btn: { paddingVertical: 15, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  label: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
 });

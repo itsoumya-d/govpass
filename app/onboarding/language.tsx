@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import PressableScale from '@/components/PressableScale';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -54,14 +55,14 @@ export default function LanguageScreen() {
           {languages.map((lang) => {
             const isSelected = selected === lang.code;
             return (
-              <TouchableOpacity accessibilityRole="button"
+              <PressableScale haptic="light"
+                accessibilityRole="button"
                 key={lang.code}
                 onPress={() => setSelected(lang.code)}
                 style={[
                   styles.languageCard,
                   isSelected && styles.languageCardSelected,
                 ]}
-                activeOpacity={0.8}
               >
                 <View style={styles.cardLeft}>
                   <Text style={styles.flagEmoji}>{lang.flag}</Text>
@@ -84,7 +85,7 @@ export default function LanguageScreen() {
                     <Ionicons name="checkmark" size={16} color="#FFFFFF" />
                   )}
                 </View>
-              </TouchableOpacity>
+              </PressableScale>
             );
           })}
         </View>
@@ -93,11 +94,11 @@ export default function LanguageScreen() {
         <View style={{ flex: 1 }} />
 
         {/* Continue Button */}
-        <TouchableOpacity accessibilityRole="button"
+        <PressableScale haptic="medium"
+          accessibilityRole="button"
           onPress={handleContinue}
           disabled={!selected}
           style={[styles.continueButton, !selected && styles.continueButtonDisabled]}
-          activeOpacity={0.85}
         >
           <Text style={[styles.continueButtonText, !selected && styles.continueButtonTextDisabled]}>
             Continue
@@ -107,7 +108,7 @@ export default function LanguageScreen() {
             size={18}
             color={selected ? '#FFFFFF' : '#636366'}
           />
-        </TouchableOpacity>
+        </PressableScale>
       </View>
     </SafeAreaView>
   );

@@ -3,14 +3,15 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   ActivityIndicator,
-  Alert,
   StyleSheet,
 } from 'react-native';
+import { useToast } from '@/lib/useToast';
+import Toast from '@/components/Toast';
+import PressableScale from '@/components/PressableScale';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { signInWithGoogle, signInWithApple, signInWithMagicLink } from '@/lib/auth';
@@ -25,18 +26,20 @@ export default function SignupScreen() {
   const [loading, setLoading] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [socialLoading, setSocialLoading] = useState<'google' | 'apple' | null>(null);
+  const { toast, showToast, hideToast } = useToast();
 
   const handleMagicLink = async () => {
     if (!email || !email.includes('@')) {
-      Alert.alert('Invalid Email', 'Please enter a valid email address.');
+      showToast('Please enter a valid email address.', 'error');
       return;
     }
     setLoading(true);
     const { error } = await signInWithMagicLink(email);
     setLoading(false);
     if (error) {
-      Alert.alert('Error', error.message);
+      showToast(error.message || 'Something went wrong', 'error');
     } else {
+      setOnboardingComplete(true);
       setMagicLinkSent(true);
     }
   };
@@ -45,14 +48,16 @@ export default function SignupScreen() {
     setSocialLoading('google');
     const { error } = await signInWithGoogle();
     setSocialLoading(null);
-    if (error) Alert.alert('Error', 'Failed to sign in with Google.');
+    if (error) showToast('Failed to sign in with Google.', 'error');
+    else setOnboardingComplete(true);
   };
 
   const handleApple = async () => {
     setSocialLoading('apple');
     const { error } = await signInWithApple();
     setSocialLoading(null);
-    if (error) Alert.alert('Error', 'Failed to sign in with Apple.');
+    if (error) showToast('Failed to sign in with Apple.', 'error');
+    else setOnboardingComplete(true);
   };
 
   if (magicLinkSent) {
@@ -67,12 +72,14 @@ export default function SignupScreen() {
           <Text style={styles.emailHighlight}>{email}</Text>
           {'\n\n'}Tap the link in your email to create your account.
         </Text>
-        <TouchableOpacity accessibilityRole="button"
+        <PressableScale haptic="light"
+          accessibilityRole="button"
           onPress={() => setMagicLinkSent(false)}
           style={styles.differentEmailBtn}
         >
           <Text style={styles.differentEmailText}>Use Different Email</Text>
-        </TouchableOpacity>
+        </PressableScale>
+        <Toast {...toast} onHide={hideToast} />
       </View>
     );
   }
@@ -111,11 +118,11 @@ export default function SignupScreen() {
           {/* Social buttons */}
           <View style={styles.socialSection}>
             {/* Apple */}
-            <TouchableOpacity accessibilityRole="button"
+            <PressableScale haptic="medium"
+              accessibilityRole="button"
               onPress={handleApple}
               disabled={socialLoading !== null}
               style={[styles.appleBtn, { opacity: socialLoading === 'apple' ? 0.7 : 1 }]}
-              activeOpacity={0.85}
             >
               {socialLoading === 'apple' ? (
                 <ActivityIndicator color="#000000" size="small" />
@@ -123,14 +130,14 @@ export default function SignupScreen() {
                 <Ionicons name="logo-apple" size={20} color="#000000" />
               )}
               <Text style={styles.appleBtnText}>Continue with Apple</Text>
-            </TouchableOpacity>
+            </PressableScale>
 
             {/* Google */}
-            <TouchableOpacity accessibilityRole="button"
+            <PressableScale haptic="medium"
+              accessibilityRole="button"
               onPress={handleGoogle}
               disabled={socialLoading !== null}
               style={[styles.googleBtn, { opacity: socialLoading === 'google' ? 0.7 : 1 }]}
-              activeOpacity={0.85}
             >
               {socialLoading === 'google' ? (
                 <ActivityIndicator color="#FFFFFF" size="small" />
@@ -138,7 +145,7 @@ export default function SignupScreen() {
                 <Ionicons name="logo-google" size={20} color="#FFFFFF" />
               )}
               <Text style={styles.googleBtnText}>Continue with Google</Text>
-            </TouchableOpacity>
+            </PressableScale>
           </View>
 
           {/* Divider */}
@@ -162,11 +169,11 @@ export default function SignupScreen() {
               style={[styles.emailInput, email ? styles.emailInputActive : null]}
             />
 
-            <TouchableOpacity accessibilityRole="button"
+            <PressableScale haptic="medium"
+              accessibilityRole="button"
               onPress={handleMagicLink}
               disabled={loading || !email}
               style={[styles.magicLinkBtn, !email && styles.magicLinkBtnDisabled]}
-              activeOpacity={0.85}
             >
               {loading ? (
                 <ActivityIndicator color="#FFFFFF" size="small" />
@@ -178,15 +185,15 @@ export default function SignupScreen() {
                   </Text>
                 </>
               )}
-            </TouchableOpacity>
+            </PressableScale>
           </View>
 
           {/* Already have account */}
           <View style={styles.loginRow}>
             <Text style={styles.loginRowText}>Already have an account?</Text>
-            <TouchableOpacity accessibilityRole="button" onPress={() => router.replace('/auth/login')}>
+            <PressableScale haptic="light" accessibilityRole="button" onPress={() => { setOnboardingComplete(true); router.replace('/auth/login'); }}>
               <Text style={styles.loginLink}>Sign in</Text>
-            </TouchableOpacity>
+            </PressableScale>
           </View>
 
           {/* Privacy note */}
@@ -196,6 +203,7 @@ export default function SignupScreen() {
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
+      <Toast {...toast} onHide={hideToast} />
     </SafeAreaView>
   );
 }

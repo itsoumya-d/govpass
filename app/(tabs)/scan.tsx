@@ -2,41 +2,49 @@ import { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
   ScrollView,
   ActivityIndicator,
-  Alert,
-  Animated,
+  Pressable,
   Platform,
 } from 'react-native';
+import { useToast } from '@/lib/useToast';
+import Toast from '@/components/Toast';
+import { router } from 'expo-router';
+import Reanimated, {
+  FadeInDown, useSharedValue, withSpring, withTiming,
+  useAnimatedStyle, runOnJS,
+} from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import PressableScale from '@/components/PressableScale';
 import { supabase } from '@/lib/supabase';
 import { analyzeDocument, type DocumentAnalysis } from '@/lib/api';
+import { useTranslation } from 'react-i18next';
 
 const DOCUMENT_TYPES = [
-  { id: 'id', label: 'Government ID', icon: 'card-outline', color: '#1E40AF' },
-  { id: 'pay_stub', label: 'Pay Stub', icon: 'wallet-outline', color: '#059669' },
-  { id: 'tax_return', label: 'Tax Return', icon: 'document-outline', color: '#D97706' },
-  { id: 'utility_bill', label: 'Utility Bill', icon: 'flash-outline', color: '#7C3AED' },
-  { id: 'birth_certificate', label: 'Birth Certificate', icon: 'ribbon-outline', color: '#DC2626' },
-  { id: 'other', label: 'Other Document', icon: 'document-text-outline', color: '#6B7280' },
+  { id: 'id', labelKey: 'scan.governmentId', icon: 'card-outline', color: '#1E40AF' },
+  { id: 'pay_stub', labelKey: 'scan.payStub', icon: 'wallet-outline', color: '#059669' },
+  { id: 'tax_return', labelKey: 'scan.taxReturn', icon: 'document-outline', color: '#D97706' },
+  { id: 'utility_bill', labelKey: 'scan.utilityBill', icon: 'flash-outline', color: '#7C3AED' },
+  { id: 'birth_certificate', labelKey: 'scan.birthCertificate', icon: 'ribbon-outline', color: '#DC2626' },
+  { id: 'other', labelKey: 'scan.otherDocument', icon: 'document-text-outline', color: '#6B7280' },
 ] as const;
 type DocTypeId = typeof DOCUMENT_TYPES[number]['id'];
 
 type OcrStep = 0 | 1 | 2 | 3; // 0=idle, 1=capturing, 2=extracting, 3=matching
 
 const OCR_STEPS = [
-  { label: 'Capturing', icon: 'camera-outline', color: '#1E40AF' },
-  { label: 'Extracting Text', icon: 'text-outline', color: '#D97706' },
-  { label: 'Matching Benefits', icon: 'search-outline', color: '#059669' },
+  { labelKey: 'scan.capturing', icon: 'camera-outline', color: '#1E40AF' },
+  { labelKey: 'scan.extractingText', icon: 'text-outline', color: '#D97706' },
+  { labelKey: 'scan.matchingBenefits', icon: 'search-outline', color: '#059669' },
 ];
 
 function StepIndicator({ currentStep }: { currentStep: OcrStep }) {
-  // currentStep 1,2,3 maps to step indices 0,1,2
+  const { t } = useTranslation();
   return (
     <View style={si.container}>
       {OCR_STEPS.map((step, idx) => {
@@ -67,7 +75,7 @@ function StepIndicator({ currentStep }: { currentStep: OcrStep }) {
               isActive && { color: color, fontWeight: '700' },
               isDone && { color: '#64748B' },
             ]}>
-              {step.label}
+              {t(step.labelKey)}
             </Text>
           </View>
         );
@@ -77,14 +85,35 @@ function StepIndicator({ currentStep }: { currentStep: OcrStep }) {
 }
 
 export default function ScanScreen() {
+  const { t } = useTranslation();
+  const { toast, showToast, hideToast } = useToast();
   const [permission, requestPermission] = useCameraPermissions();
   const [selectedDoc, setSelectedDoc] = useState<DocTypeId>('id');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [ocrStep, setOcrStep] = useState<OcrStep>(0);
   const [result, setResult] = useState<DocumentAnalysis | null>(null);
   const cameraRef = useRef<CameraView>(null);
-  const sheetAnim = useRef(new Animated.Value(0)).current;
   const stepTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  // Gesture-dismissible sheet
+  const sheetY = useSharedValue(500);
+  const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: sheetY.value }] }));
+  const panGesture = Gesture.Pan()
+    .onChange((e) => { if (e.translationY > 0) sheetY.value = e.translationY; })
+    .onEnd((e) => {
+      if (e.translationY > 80 || e.velocityY > 800) {
+        sheetY.value = withTiming(500, { duration: 280 }, () => { runOnJS(setResult)(null); });
+      } else {
+        sheetY.value = withSpring(0, { damping: 20, stiffness: 200 });
+      }
+    });
+
+  useEffect(() => {
+    if (result) {
+      sheetY.value = 500;
+      sheetY.value = withSpring(0, { damping: 20, stiffness: 200 });
+    }
+  }, [result]);
 
   // Clear step timers on unmount
   useEffect(() => {
@@ -96,6 +125,12 @@ export default function ScanScreen() {
     const t1 = setTimeout(() => setOcrStep(2), 1000); // Extracting Text
     const t2 = setTimeout(() => setOcrStep(3), 2200); // Matching Benefits
     stepTimers.current = [t1, t2];
+  };
+
+  const dismissResult = () => {
+    sheetY.value = withTiming(500, { duration: 280 }, () => {
+      runOnJS(setResult)(null);
+    });
   };
 
   const handleScan = async () => {
@@ -116,11 +151,10 @@ export default function ScanScreen() {
       const analysis = await analyzeDocument(user.id, photo.base64, selectedDoc);
       setResult(analysis);
       setOcrStep(0);
-      Animated.spring(sheetAnim, { toValue: 1, tension: 80, friction: 10, useNativeDriver: true }).start();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
       setOcrStep(0);
-      Alert.alert('Scan Failed', 'Ensure the document is flat, well-lit, and within the frame.');
+      showToast(`${t('scan.scanFailed')}: ${t('scan.scanFailedMsg')}`, 'error');
     } finally {
       setIsAnalyzing(false);
     }
@@ -133,11 +167,11 @@ export default function ScanScreen() {
       <SafeAreaView style={s.safe}>
         <View style={s.center}>
           <Ionicons name="camera-outline" size={52} color="#1E40AF" />
-          <Text style={s.permTitle}>Camera Required</Text>
-          <Text style={s.permSub}>GovPass needs camera access to scan and analyze your documents.</Text>
-          <TouchableOpacity accessibilityRole="button" style={s.permBtn} onPress={requestPermission}>
-            <Text style={s.permBtnText}>Grant Permission</Text>
-          </TouchableOpacity>
+          <Text style={s.permTitle}>{t('scan.cameraRequired')}</Text>
+          <Text style={s.permSub}>{t('scan.cameraPermissionDesc')}</Text>
+          <PressableScale accessibilityRole="button" haptic="medium" style={s.permBtn} onPress={requestPermission}>
+            <Text style={s.permBtnText}>{t('scan.grantPermission')}</Text>
+          </PressableScale>
         </View>
       </SafeAreaView>
     );
@@ -151,24 +185,27 @@ export default function ScanScreen() {
 
       <SafeAreaView style={{ flex: 1 }}>
         <View style={s.header}>
-          <Text style={s.title}>Scan Document</Text>
+          <Text style={s.title}>{t('scan.title')}</Text>
           <View style={[s.badge, { backgroundColor: docType.color + '30', borderColor: docType.color + '60' }]}>
             <Ionicons name={docType.icon as any} size={14} color={docType.color} />
-            <Text style={[s.badgeText, { color: docType.color }]}>{docType.label}</Text>
+            <Text style={[s.badgeText, { color: docType.color }]}>{t(docType.labelKey)}</Text>
           </View>
         </View>
 
         {/* Doc type selector */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.typeRow}>
-          {DOCUMENT_TYPES.map(doc => (
-            <TouchableOpacity accessibilityRole="button"
-              key={doc.id}
-              onPress={() => setSelectedDoc(doc.id)}
-              style={[s.typeChip, selectedDoc === doc.id && { backgroundColor: doc.color + '25', borderColor: doc.color }]}
-            >
-              <Ionicons name={doc.icon as any} size={16} color={selectedDoc === doc.id ? doc.color : '#94A3B8'} />
-              <Text style={[s.typeChipText, selectedDoc === doc.id && { color: doc.color }]}>{doc.label}</Text>
-            </TouchableOpacity>
+          {DOCUMENT_TYPES.map((doc, index) => (
+            <Reanimated.View key={doc.id} entering={FadeInDown.delay(80 + index * 60).duration(300)}>
+              <PressableScale
+                accessibilityRole="button"
+                haptic="light"
+                onPress={() => setSelectedDoc(doc.id)}
+                style={[s.typeChip, selectedDoc === doc.id && { backgroundColor: doc.color + '25', borderColor: doc.color }]}
+              >
+                <Ionicons name={doc.icon as any} size={16} color={selectedDoc === doc.id ? doc.color : '#94A3B8'} />
+                <Text style={[s.typeChipText, selectedDoc === doc.id && { color: doc.color }]}>{t(doc.labelKey)}</Text>
+              </PressableScale>
+            </Reanimated.View>
           ))}
         </ScrollView>
 
@@ -180,13 +217,13 @@ export default function ScanScreen() {
               <View style={s.analyzingBox}>
                 <ActivityIndicator color="#1E40AF" size="large" />
                 <Text style={s.analyzingText}>
-                  {ocrStep === 1 ? 'Capturing...' : ocrStep === 2 ? 'Extracting Text...' : 'Matching Benefits...'}
+                  {ocrStep === 1 ? t('scan.capturing') : ocrStep === 2 ? t('scan.extractingText') : t('scan.matchingBenefits')}
                 </Text>
-                <Text style={s.analyzingSubText}>AI Reading Document</Text>
+                <Text style={s.analyzingSubText}>{t('scan.aiReadingDocument')}</Text>
               </View>
             )}
           </View>
-          <Text style={s.hint}>Align document edges with the frame</Text>
+          <Text style={s.hint}>{t('scan.alignDocument')}</Text>
 
           {/* OCR Step Indicator — shown while analyzing */}
           {isAnalyzing && ocrStep > 0 && (
@@ -198,51 +235,59 @@ export default function ScanScreen() {
 
         {/* Capture */}
         <View style={s.bottom}>
-          <TouchableOpacity accessibilityRole="button" style={s.capBtn} onPress={handleScan} disabled={isAnalyzing}>
+          <PressableScale accessibilityRole="button" haptic="medium" style={s.capBtn} onPress={handleScan} disabled={isAnalyzing}>
             {isAnalyzing
               ? <ActivityIndicator color="#FFFFFF" size="large" />
-              : <><Ionicons name="scan" size={24} color="#FFFFFF" /><Text style={s.capText}>Scan Document</Text></>
+              : <><Ionicons name="scan" size={24} color="#FFFFFF" /><Text style={s.capText}>{t('scan.scanDocument')}</Text></>
             }
-          </TouchableOpacity>
+          </PressableScale>
         </View>
       </SafeAreaView>
 
-      {/* Results */}
+      {/* Results sheet — gesture dismissible */}
       {result && (
         <View style={StyleSheet.absoluteFill}>
-          <TouchableOpacity accessibilityRole="button" style={{ flex: 1 }} onPress={() => { setResult(null); sheetAnim.setValue(0); }} activeOpacity={1} />
-          <Animated.View style={[s.sheet, { transform: [{ translateY: sheetAnim.interpolate({ inputRange: [0, 1], outputRange: [500, 0] }) }] }]}>
-            <View style={s.sheetHandle} />
-            <Text style={s.sheetTitle}>Document Scanned</Text>
-            <Text style={s.sheetSub}>{result.summary}</Text>
+          <Pressable style={{ flex: 1 }} onPress={dismissResult} />
+          <GestureDetector gesture={panGesture}>
+            <Reanimated.View style={[s.sheet, sheetStyle]}>
+              <View style={s.sheetHandle} />
+              <Text style={s.sheetTitle}>{t('scan.documentScanned')}</Text>
+              <Text style={s.sheetSub}>{result.summary}</Text>
 
-            <View style={s.dataGrid}>
-              {result.extractedData.fullName && <DataRow label="Name" value={result.extractedData.fullName} />}
-              {result.extractedData.dateOfBirth && <DataRow label="Date of Birth" value={result.extractedData.dateOfBirth} />}
-              {result.extractedData.address && <DataRow label="Address" value={result.extractedData.address} />}
-              {result.extractedData.income && <DataRow label="Annual Income" value={`$${result.extractedData.income.toLocaleString()}`} />}
-              {result.extractedData.documentNumber && <DataRow label="Document #" value={result.extractedData.documentNumber} />}
-            </View>
-
-            {result.eligibilityHints.length > 0 && (
-              <View style={s.hintsBox}>
-                <Text style={s.hintsTitle}>Potential Benefits</Text>
-                {result.eligibilityHints.map((hint, i) => (
-                  <View key={i} style={s.hintRow}>
-                    <Ionicons name="checkmark-circle" size={16} color="#059669" />
-                    <Text style={s.hintText}>{hint}</Text>
-                  </View>
-                ))}
+              <View style={s.dataGrid}>
+                {result.extractedData.fullName && <DataRow label={t('scan.extractedName')} value={result.extractedData.fullName} />}
+                {result.extractedData.dateOfBirth && <DataRow label={t('scan.extractedDob')} value={result.extractedData.dateOfBirth} />}
+                {result.extractedData.address && <DataRow label={t('scan.extractedAddress')} value={result.extractedData.address} />}
+                {result.extractedData.income && <DataRow label={t('scan.extractedIncome')} value={`$${result.extractedData.income.toLocaleString()}`} />}
+                {result.extractedData.documentNumber && <DataRow label={t('scan.extractedDocNumber')} value={result.extractedData.documentNumber} />}
               </View>
-            )}
 
-            <TouchableOpacity accessibilityRole="button" style={s.ctaBtn}>
-              <Ionicons name="search" size={18} color="#FFFFFF" />
-              <Text style={s.ctaBtnText}>Check Full Eligibility</Text>
-            </TouchableOpacity>
-          </Animated.View>
+              {result.eligibilityHints.length > 0 && (
+                <View style={s.hintsBox}>
+                  <Text style={s.hintsTitle}>{t('scan.potentialBenefitsTitle')}</Text>
+                  {result.eligibilityHints.map((hint, i) => (
+                    <View key={i} style={s.hintRow}>
+                      <Ionicons name="checkmark-circle" size={16} color="#059669" />
+                      <Text style={s.hintText}>{hint}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              <PressableScale
+                accessibilityRole="button"
+                haptic="medium"
+                style={s.ctaBtn}
+                onPress={() => { dismissResult(); router.push('/(tabs)/eligibility'); }}
+              >
+                <Ionicons name="search" size={18} color="#FFFFFF" />
+                <Text style={s.ctaBtnText}>{t('scan.checkFullEligibility')}</Text>
+              </PressableScale>
+            </Reanimated.View>
+          </GestureDetector>
         </View>
       )}
+      <Toast {...toast} onHide={hideToast} />
     </View>
   );
 }
@@ -319,7 +364,6 @@ const s = StyleSheet.create({
   analyzingText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
   analyzingSubText: { color: '#94A3B8', fontSize: 12 },
   hint: { color: 'rgba(255,255,255,0.6)', fontSize: 13 },
-  // Step indicator wrapper
   stepIndicatorWrapper: {
     backgroundColor: 'rgba(0,0,0,0.7)',
     paddingHorizontal: 16,

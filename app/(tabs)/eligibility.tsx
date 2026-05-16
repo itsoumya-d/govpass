@@ -1,16 +1,20 @@
-'use client';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
+  View, Text, ScrollView, StyleSheet,
   TextInput, Switch, Linking, ActivityIndicator,
 } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import PressableScale from '@/components/PressableScale';
 import {
   checkEligibility, estimateTotalBenefitValue,
   type UserProfile, type EligibleProgram,
 } from '../../lib/eligibility-engine';
 import { shareMultipleResults } from '../../lib/share';
+import { supabase } from '../../lib/supabase';
+import { useTranslation } from 'react-i18next';
+import { getBenefitsMaximizer, type BenefitsMaximizerResult } from '../../lib/api';
 
 const PRIMARY = '#1E40AF';
 const SUCCESS = '#059669';
@@ -20,12 +24,12 @@ const DANGER = '#DC2626';
 type Step = 'household' | 'income' | 'family' | 'situation' | 'results';
 
 const STEPS: Step[] = ['household', 'income', 'family', 'situation', 'results'];
-const STEP_TITLES: Record<Step, string> = {
-  household: 'Your Household',
-  income: 'Income & Housing',
-  family: 'Family Situation',
-  situation: 'Your Situation',
-  results: 'Your Results',
+const STEP_TITLE_KEYS: Record<Step, string> = {
+  household: 'eligibility.stepHousehold',
+  income: 'eligibility.stepIncome',
+  family: 'eligibility.stepFamily',
+  situation: 'eligibility.stepSituation',
+  results: 'eligibility.stepResults',
 };
 const STEP_ICONS: Record<Step, string> = {
   household: 'people',
@@ -112,7 +116,7 @@ function NumericInput({ label, value, onChange, prefix, suffix, keyboardType = '
           placeholder="0"
           placeholderTextColor="#9CA3AF"
         />
-        {suffix ? <Text style={[styles.inputAddon, { borderLeft: 0, borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }]}>{suffix}</Text> : null}
+        {suffix ? <Text style={[styles.inputAddon, { borderLeftWidth: 0, borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }]}>{suffix}</Text> : null}
       </View>
     </View>
   );
@@ -129,16 +133,17 @@ function OptionPicker({ label, options, value, onSelect }: {
       <Text style={styles.inputLabel}>{label}</Text>
       <View style={styles.optionRow}>
         {options.map(opt => (
-          <TouchableOpacity
+          <PressableScale
             key={opt.value}
             accessibilityRole="button"
+            haptic="light"
             style={[styles.optionBtn, value === opt.value && styles.optionBtnActive]}
             onPress={() => onSelect(opt.value)}
           >
             <Text style={[styles.optionBtnText, value === opt.value && styles.optionBtnTextActive]}>
               {opt.label}
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
         ))}
       </View>
     </View>
@@ -147,32 +152,111 @@ function OptionPicker({ label, options, value, onSelect }: {
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 export default function EligibilityScreen() {
+  const { t } = useTranslation();
   const [stepIndex, setStepIndex] = useState(0);
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [results, setResults] = useState<EligibleProgram[] | null>(null);
   const [computing, setComputing] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [aiMaximizer, setAiMaximizer] = useState<BenefitsMaximizerResult | null>(null);
+  const [maximizerLoading, setMaximizerLoading] = useState(false);
 
   const currentStep = STEPS[stepIndex];
+
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      if (data) {
+        setProfile((prev) => ({
+          ...prev,
+          householdSize: data.household_size ?? prev.householdSize,
+          annualIncome: data.annual_income ?? prev.annualIncome,
+          state: data.state ?? prev.state,
+          age: data.age ?? prev.age,
+          hasChildren: data.has_children ?? prev.hasChildren,
+          childrenUnder5: data.children_under5 ?? prev.childrenUnder5,
+          childrenUnder18: data.children_under18 ?? prev.childrenUnder18,
+          pregnant: data.pregnant ?? prev.pregnant,
+          disabled: data.disabled ?? prev.disabled,
+          veteran: data.veteran ?? prev.veteran,
+          elderly: data.elderly ?? prev.elderly,
+          citizen: data.citizen ?? prev.citizen,
+          legalResident: data.legal_resident ?? prev.legalResident,
+          unemployed: data.unemployed ?? prev.unemployed,
+          receivingSSI: data.receiving_ssi ?? prev.receivingSSI,
+          receivingTANF: data.receiving_tanf ?? prev.receivingTANF,
+          housingType: data.housing_type ?? prev.housingType,
+          monthlyRent: data.monthly_rent ?? prev.monthlyRent,
+          hasHealthInsurance: data.has_health_insurance ?? prev.hasHealthInsurance,
+          selfEmployed: data.self_employed ?? prev.selfEmployed,
+        }));
+      }
+    })();
+  }, []);
 
   const set = useCallback(<K extends keyof UserProfile>(key: K, value: UserProfile[K]) => {
     setProfile(prev => ({ ...prev, [key]: value }));
   }, []);
 
+  const saveProfileToSupabase = useCallback(async (p: UserProfile) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from('profiles').upsert({
+      id: user.id,
+      household_size: p.householdSize,
+      annual_income: p.annualIncome,
+      state: p.state,
+      age: p.age,
+      has_children: p.hasChildren,
+      children_under5: p.childrenUnder5,
+      children_under18: p.childrenUnder18,
+      pregnant: p.pregnant,
+      disabled: p.disabled,
+      veteran: p.veteran,
+      elderly: p.elderly,
+      citizen: p.citizen,
+      legal_resident: p.legalResident,
+      unemployed: p.unemployed,
+      receiving_ssi: p.receivingSSI,
+      receiving_tanf: p.receivingTANF,
+      housing_type: p.housingType,
+      monthly_rent: p.monthlyRent,
+      has_health_insurance: p.hasHealthInsurance,
+      self_employed: p.selfEmployed,
+    }, { onConflict: 'id' });
+  }, []);
+
   const goNext = useCallback(async () => {
     if (stepIndex === STEPS.length - 2) {
-      // Last questionnaire step → compute results
+      // Last questionnaire step → compute results and save profile
       setComputing(true);
       setStepIndex(STEPS.length - 1);
-      // Small delay for UX
       await new Promise(r => setTimeout(r, 300));
       const programs = checkEligibility(profile);
       setResults(programs);
+      // Persist profile in background
+      saveProfileToSupabase(profile).catch(() => {});
       setComputing(false);
+      // Trigger AI benefits maximizer asynchronously
+      setMaximizerLoading(true);
+      const eligible = programs.filter(p => p.eligible);
+      const nearMiss = programs.filter(p => !p.eligible);
+      getBenefitsMaximizer({
+        profile: profile as unknown as Record<string, unknown>,
+        eligiblePrograms: eligible.map(p => ({ name: p.name })),
+        nearMissPrograms: nearMiss.slice(0, 5).map(p => ({ name: p.name })),
+      }).then(m => { setAiMaximizer(m); setMaximizerLoading(false); })
+        .catch(() => setMaximizerLoading(false));
     } else {
       setStepIndex(i => i + 1);
     }
-  }, [stepIndex, profile]);
+  }, [stepIndex, profile, saveProfileToSupabase]);
 
   const goBack = useCallback(() => {
     if (stepIndex === 0) return;
@@ -189,6 +273,8 @@ export default function EligibilityScreen() {
     setStepIndex(0);
     setProfile(DEFAULT_PROFILE);
     setExpandedId(null);
+    setAiMaximizer(null);
+    setMaximizerLoading(false);
   }, []);
 
   // ── Step progress bar ────────────────────────────────────────────────────
@@ -206,24 +292,24 @@ export default function EligibilityScreen() {
       case 'household':
         return (
           <View style={styles.stepContent}>
-            <Text style={styles.stepTitle}>{STEP_TITLES.household}</Text>
-            <Text style={styles.stepSub}>Tell us about the people you live with</Text>
+            <Text style={styles.stepTitle}>{t(STEP_TITLE_KEYS.household)}</Text>
+            <Text style={styles.stepSub}>{t('eligibility.subHousehold')}</Text>
             <NumericInput
-              label="Number of people in household"
+              label={t('eligibility.householdSize')}
               value={String(profile.householdSize)}
               onChange={v => set('householdSize', Math.max(1, parseInt(v) || 1))}
             />
             <NumericInput
-              label="Your age"
+              label={t('eligibility.yourAge')}
               value={String(profile.age)}
               onChange={v => set('age', parseInt(v) || 18)}
             />
             <OptionPicker
-              label="Citizenship status"
+              label={t('eligibility.citizenshipStatus')}
               options={[
-                { value: 'citizen', label: 'US Citizen' },
-                { value: 'resident', label: 'Legal Resident' },
-                { value: 'other', label: 'Other' },
+                { value: 'citizen', label: t('eligibility.usCitizen') },
+                { value: 'resident', label: t('eligibility.legalResident') },
+                { value: 'other', label: t('eligibility.other') },
               ]}
               value={profile.citizen ? 'citizen' : profile.legalResident ? 'resident' : 'other'}
               onSelect={v => {
@@ -237,35 +323,35 @@ export default function EligibilityScreen() {
       case 'income':
         return (
           <View style={styles.stepContent}>
-            <Text style={styles.stepTitle}>{STEP_TITLES.income}</Text>
-            <Text style={styles.stepSub}>Used only to calculate eligibility</Text>
+            <Text style={styles.stepTitle}>{t(STEP_TITLE_KEYS.income)}</Text>
+            <Text style={styles.stepSub}>{t('eligibility.subIncome')}</Text>
             <NumericInput
-              label="Annual household income"
+              label={t('eligibility.annualIncome')}
               value={String(profile.annualIncome)}
               onChange={v => set('annualIncome', parseInt(v) || 0)}
               prefix="$"
             />
             <OptionPicker
-              label="Housing situation"
+              label={t('eligibility.housingSituation')}
               options={[
-                { value: 'renting', label: 'Renting' },
-                { value: 'owning', label: 'Owning' },
-                { value: 'homeless', label: 'Unhoused' },
-                { value: 'other', label: 'Other' },
+                { value: 'renting', label: t('eligibility.housingRenting') },
+                { value: 'owning', label: t('eligibility.housingOwning') },
+                { value: 'homeless', label: t('eligibility.housingUnhoused') },
+                { value: 'other', label: t('eligibility.other') },
               ]}
               value={profile.housingType}
               onSelect={v => set('housingType', v as UserProfile['housingType'])}
             />
             {profile.housingType === 'renting' && (
               <NumericInput
-                label="Monthly rent"
+                label={t('eligibility.monthlyRent')}
                 value={String(profile.monthlyRent)}
                 onChange={v => set('monthlyRent', parseInt(v) || 0)}
                 prefix="$"
               />
             )}
             <ToggleRow
-              label="Self-employed"
+              label={t('eligibility.selfEmployed')}
               value={profile.selfEmployed}
               onToggle={v => set('selfEmployed', v)}
             />
@@ -275,10 +361,10 @@ export default function EligibilityScreen() {
       case 'family':
         return (
           <View style={styles.stepContent}>
-            <Text style={styles.stepTitle}>{STEP_TITLES.family}</Text>
-            <Text style={styles.stepSub}>Family structure affects many programs</Text>
+            <Text style={styles.stepTitle}>{t(STEP_TITLE_KEYS.family)}</Text>
+            <Text style={styles.stepSub}>{t('eligibility.subFamily')}</Text>
             <ToggleRow
-              label="Have dependent children"
+              label={t('eligibility.hasDependentChildren')}
               value={profile.hasChildren}
               onToggle={v => {
                 set('hasChildren', v);
@@ -288,20 +374,20 @@ export default function EligibilityScreen() {
             {profile.hasChildren && (
               <>
                 <NumericInput
-                  label="Children under 18"
+                  label={t('eligibility.childrenUnder18')}
                   value={String(profile.childrenUnder18)}
                   onChange={v => set('childrenUnder18', parseInt(v) || 0)}
                 />
                 <ToggleRow
-                  label="Children under 5"
-                  sub="Affects WIC, Head Start eligibility"
+                  label={t('eligibility.childrenUnder5')}
+                  sub={t('eligibility.childrenUnder5Sub')}
                   value={profile.childrenUnder5}
                   onToggle={v => set('childrenUnder5', v)}
                 />
               </>
             )}
             <ToggleRow
-              label="Currently pregnant"
+              label={t('eligibility.currentlyPregnant')}
               value={profile.pregnant}
               onToggle={v => set('pregnant', v)}
             />
@@ -311,34 +397,34 @@ export default function EligibilityScreen() {
       case 'situation':
         return (
           <View style={styles.stepContent}>
-            <Text style={styles.stepTitle}>{STEP_TITLES.situation}</Text>
-            <Text style={styles.stepSub}>Personal circumstances that unlock benefits</Text>
+            <Text style={styles.stepTitle}>{t(STEP_TITLE_KEYS.situation)}</Text>
+            <Text style={styles.stepSub}>{t('eligibility.subSituation')}</Text>
             <ToggleRow
-              label="Have a disability"
-              sub="Qualifies for SSI, Medicaid, housing priority"
+              label={t('eligibility.hasDisability')}
+              sub={t('eligibility.hasDisabilitySub')}
               value={profile.disabled}
               onToggle={v => set('disabled', v)}
             />
             <ToggleRow
-              label="Veteran or military"
-              sub="VA pension, healthcare, and more"
+              label={t('eligibility.isVeteran')}
+              sub={t('eligibility.isVeteranSub')}
               value={profile.veteran}
               onToggle={v => set('veteran', v)}
             />
             <ToggleRow
-              label="Age 60 or older"
-              sub="Medicare Extra Help, senior programs"
+              label={t('eligibility.isSenior')}
+              sub={t('eligibility.isSeniorSub')}
               value={profile.elderly}
               onToggle={v => set('elderly', v)}
             />
             <ToggleRow
-              label="Currently unemployed"
-              sub="UI benefits, SNAP E&T, job training"
+              label={t('eligibility.isUnemployed')}
+              sub={t('eligibility.isUnemployedSub')}
               value={profile.unemployed}
               onToggle={v => set('unemployed', v)}
             />
             <ToggleRow
-              label="Have health insurance"
+              label={t('eligibility.hasHealthInsurance')}
               value={profile.hasHealthInsurance}
               onToggle={v => set('hasHealthInsurance', v)}
             />
@@ -356,7 +442,7 @@ export default function EligibilityScreen() {
       return (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={PRIMARY} />
-          <Text style={styles.loadingText}>Checking 15+ programs…</Text>
+          <Text style={styles.loadingText}>{t('eligibility.checkingPrograms', { count: 15 })}</Text>
         </View>
       );
     }
@@ -372,49 +458,112 @@ export default function EligibilityScreen() {
           <View style={styles.summaryRow}>
             <View style={styles.summaryItem}>
               <Text style={styles.summaryBig}>{eligible.length}</Text>
-              <Text style={styles.summaryLabel}>Programs qualified</Text>
+              <Text style={styles.summaryLabel}>{t('eligibility.programsQualified')}</Text>
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryItem}>
               <Text style={styles.summaryBig}>${monthlyValue.toLocaleString()}</Text>
-              <Text style={styles.summaryLabel}>Est. monthly value</Text>
+              <Text style={styles.summaryLabel}>{t('eligibility.estMonthlyValue')}</Text>
             </View>
           </View>
           <View style={styles.summaryActions}>
-            <TouchableOpacity accessibilityRole="button" style={styles.restartBtn} onPress={restart}>
+            <PressableScale accessibilityRole="button" haptic="light" style={styles.restartBtn} onPress={restart}>
               <Ionicons name="refresh" size={14} color="rgba(255,255,255,0.8)" />
-              <Text style={styles.restartBtnText}>Update my profile</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
+              <Text style={styles.restartBtnText}>{t('eligibility.updateMyProfile')}</Text>
+            </PressableScale>
+            <PressableScale
               accessibilityRole="button"
+              haptic="light"
               style={styles.shareBtn}
               onPress={() =>
                 shareMultipleResults(
                   results.map((r) => ({
                     programName: r.name,
-                    status: r.eligible ? 'eligible' : 'ineligible',
-                    benefit: r.estimatedBenefit,
+                    status: r.eligible ? 'eligible' : 'ineligible' as 'eligible' | 'ineligible',
+                    benefit: r.estimatedBenefit ?? undefined,
                   }))
                 )
               }
             >
               <Ionicons name="share-outline" size={14} color="rgba(255,255,255,0.8)" />
-              <Text style={styles.restartBtnText}>Share Results</Text>
-            </TouchableOpacity>
+              <Text style={styles.restartBtnText}>{t('eligibility.shareResults')}</Text>
+            </PressableScale>
           </View>
         </View>
+
+        {/* AI Benefits Maximizer Card */}
+        {(maximizerLoading || aiMaximizer) && (
+          <View style={styles.maximizerCard}>
+            <View style={styles.maximizerHeader}>
+              <Text style={{ fontSize: 18 }}>🤖</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.maximizerTitle}>AI Benefits Maximizer</Text>
+                {aiMaximizer?.estimatedUnclaimedValue ? (
+                  <Text style={styles.maximizerSub}>~${aiMaximizer.estimatedUnclaimedValue.toLocaleString()}/mo potential unclaimed</Text>
+                ) : null}
+              </View>
+              {maximizerLoading && <ActivityIndicator color={PRIMARY} size="small" />}
+            </View>
+
+            {maximizerLoading && !aiMaximizer && (
+              <Text style={styles.maximizerLoadingText}>Analyzing your profile for hidden opportunities...</Text>
+            )}
+
+            {aiMaximizer && (
+              <>
+                {aiMaximizer.urgentDeadline && (
+                  <View style={styles.urgentBanner}>
+                    <Ionicons name="alarm" size={14} color="#DC2626" />
+                    <Text style={styles.urgentText}>{aiMaximizer.urgentDeadline}</Text>
+                  </View>
+                )}
+
+                <Text style={styles.maximizerSectionLabel}>Priority Actions</Text>
+                {aiMaximizer.priorityActions.map((action, i) => (
+                  <View key={i} style={styles.maximizerItem}>
+                    <View style={styles.priorityNum}><Text style={styles.priorityNumText}>{i + 1}</Text></View>
+                    <Text style={styles.maximizerItemText}>{action}</Text>
+                  </View>
+                ))}
+
+                <Text style={styles.maximizerSectionLabel}>Hidden Opportunities</Text>
+                {aiMaximizer.hiddenOpportunities.map((opp, i) => (
+                  <View key={i} style={styles.maximizerItem}>
+                    <Ionicons name="sparkles" size={14} color="#D97706" />
+                    <Text style={styles.maximizerItemText}>{opp}</Text>
+                  </View>
+                ))}
+
+                {aiMaximizer.nearMissStrategy ? (
+                  <View style={styles.nearMissBox}>
+                    <Text style={styles.nearMissLabel}>Near-Miss Strategy</Text>
+                    <Text style={styles.nearMissText}>{aiMaximizer.nearMissStrategy}</Text>
+                  </View>
+                ) : null}
+
+                {aiMaximizer.applicationTip ? (
+                  <View style={styles.applicationTipBox}>
+                    <Ionicons name="bulb" size={14} color="#4F46E5" />
+                    <Text style={styles.applicationTipText}>{aiMaximizer.applicationTip}</Text>
+                  </View>
+                ) : null}
+              </>
+            )}
+          </View>
+        )}
 
         {/* Eligible programs */}
         {eligible.length > 0 && (
           <>
-            <Text style={styles.sectionTitle}>You may qualify for</Text>
-            {eligible.map(p => (
-              <ProgramCard
-                key={p.id}
-                program={p}
-                expanded={expandedId === p.id}
-                onToggle={() => setExpandedId(expandedId === p.id ? null : p.id)}
-              />
+            <Text style={styles.sectionTitle}>{t('eligibility.youMayQualifyFor')}</Text>
+            {eligible.map((p, index) => (
+              <Animated.View key={p.id} entering={FadeInDown.delay(80 + index * 60).duration(350)}>
+                <ProgramCard
+                  program={p}
+                  expanded={expandedId === p.id}
+                  onToggle={() => setExpandedId(expandedId === p.id ? null : p.id)}
+                />
+              </Animated.View>
             ))}
           </>
         )}
@@ -422,29 +571,29 @@ export default function EligibilityScreen() {
         {/* Not eligible */}
         {ineligible.length > 0 && (
           <>
-            <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Not eligible</Text>
-            {ineligible.map(p => (
-              <View key={p.id} style={[styles.programCard, styles.ineligibleCard]}>
-                <View style={styles.programRow}>
-                  <Ionicons name="close-circle" size={18} color={DANGER} />
-                  <Text style={[styles.programName, { color: '#6B7280', flex: 1 }]}>{p.shortName}</Text>
-                  {p.category ? (
-                    <View style={[styles.categoryBadge, { backgroundColor: `${CATEGORY_COLORS[p.category]}20` }]}>
-                      <Text style={[styles.categoryBadgeText, { color: CATEGORY_COLORS[p.category] }]}>{p.category}</Text>
-                    </View>
+            <Text style={[styles.sectionTitle, { marginTop: 16 }]}>{t('eligibility.notEligible')}</Text>
+            {ineligible.map((p, index) => (
+              <Animated.View key={p.id} entering={FadeInDown.delay(80 + index * 60).duration(350)}>
+                <View style={[styles.programCard, styles.ineligibleCard]}>
+                  <View style={styles.programRow}>
+                    <Ionicons name="close-circle" size={18} color={DANGER} />
+                    <Text style={[styles.programName, { color: '#6B7280', flex: 1 }]}>{p.shortName}</Text>
+                    {p.category ? (
+                      <View style={[styles.categoryBadge, { backgroundColor: `${CATEGORY_COLORS[p.category]}20` }]}>
+                        <Text style={[styles.categoryBadgeText, { color: CATEGORY_COLORS[p.category] }]}>{p.category}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  {p.ineligibilityReason ? (
+                    <Text style={styles.ineligibleReason}>{p.ineligibilityReason}</Text>
                   ) : null}
                 </View>
-                {p.ineligibilityReason ? (
-                  <Text style={styles.ineligibleReason}>{p.ineligibilityReason}</Text>
-                ) : null}
-              </View>
+              </Animated.View>
             ))}
           </>
         )}
 
-        <Text style={styles.disclaimer}>
-          These results are informational estimates based on federal guidelines (FY 2024). Actual eligibility is determined by your state agency. Income and eligibility rules vary by state.
-        </Text>
+        <Text style={styles.disclaimer}>{t('eligibility.disclaimer')}</Text>
       </ScrollView>
     );
   };
@@ -457,11 +606,11 @@ export default function EligibilityScreen() {
       {/* Header */}
       <View style={styles.header}>
         {stepIndex > 0 && (
-          <TouchableOpacity accessibilityRole="button" onPress={goBack} style={styles.backBtn}>
+          <PressableScale accessibilityRole="button" haptic="light" onPress={goBack} style={styles.backBtn}>
             <Ionicons name="chevron-back" size={22} color={PRIMARY} />
-          </TouchableOpacity>
+          </PressableScale>
         )}
-        <Text style={styles.headerTitle}>{isResults ? 'Your Eligibility Results' : 'Check Eligibility'}</Text>
+        <Text style={styles.headerTitle}>{isResults ? t('eligibility.yourResults') : t('eligibility.checkEligibility')}</Text>
         {!isResults && <View style={{ width: 36 }} />}
       </View>
 
@@ -477,12 +626,12 @@ export default function EligibilityScreen() {
 
           {/* Next button */}
           <View style={styles.footer}>
-            <TouchableOpacity accessibilityRole="button" style={styles.nextBtn} onPress={goNext}>
+            <PressableScale accessibilityRole="button" haptic="medium" style={styles.nextBtn} onPress={goNext}>
               <Text style={styles.nextBtnText}>
-                {stepIndex === STEPS.length - 2 ? 'Check My Eligibility' : 'Continue'}
+                {stepIndex === STEPS.length - 2 ? t('eligibility.checkMyEligibility') : t('eligibility.continueBtn')}
               </Text>
               <Ionicons name="arrow-forward" size={18} color="#fff" />
-            </TouchableOpacity>
+            </PressableScale>
           </View>
         </>
       )}
@@ -494,10 +643,11 @@ export default function EligibilityScreen() {
 function ProgramCard({ program: p, expanded, onToggle }: {
   program: EligibleProgram; expanded: boolean; onToggle: () => void;
 }) {
+  const { t } = useTranslation();
   const catColor = CATEGORY_COLORS[p.category] ?? PRIMARY;
   return (
     <View style={[styles.programCard, styles.eligibleCard]}>
-      <TouchableOpacity accessibilityRole="button" onPress={onToggle} style={styles.programHeader}>
+      <PressableScale accessibilityRole="button" haptic="light" onPress={onToggle} style={styles.programHeader}>
         <View style={[styles.categoryIcon, { backgroundColor: `${catColor}20` }]}>
           <Ionicons name={(CATEGORY_ICONS[p.category] ?? 'star') as never} size={16} color={catColor} />
         </View>
@@ -506,7 +656,7 @@ function ProgramCard({ program: p, expanded, onToggle }: {
           <Text style={styles.programAmount}>{p.estimatedBenefit}</Text>
         </View>
         <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={16} color="#9CA3AF" />
-      </TouchableOpacity>
+      </PressableScale>
 
       {expanded && (
         <View style={styles.programDetails}>
@@ -515,14 +665,15 @@ function ProgramCard({ program: p, expanded, onToggle }: {
             <Ionicons name="calendar-outline" size={14} color="#6B7280" />
             <Text style={styles.detailText}>{p.deadline}</Text>
           </View>
-          <TouchableOpacity
+          <PressableScale
             accessibilityRole="button"
+            haptic="medium"
             style={[styles.applyBtn, { backgroundColor: catColor }]}
             onPress={() => Linking.openURL(p.applicationUrl)}
           >
-            <Text style={styles.applyBtnText}>Start Application</Text>
+            <Text style={styles.applyBtnText}>{t('eligibility.startApplication')}</Text>
             <Ionicons name="open-outline" size={14} color="#fff" />
-          </TouchableOpacity>
+          </PressableScale>
         </View>
       )}
     </View>
@@ -602,4 +753,22 @@ const styles = StyleSheet.create({
   categoryBadgeText: { fontSize: 11, fontWeight: '600', textTransform: 'capitalize' },
   ineligibleReason: { fontSize: 12, color: '#9CA3AF', marginTop: 4, marginLeft: 26 },
   disclaimer: { fontSize: 11, color: '#9CA3AF', lineHeight: 16, marginTop: 16, textAlign: 'center' },
+  // AI Maximizer
+  maximizerCard: { backgroundColor: '#EFF6FF', borderRadius: 14, borderWidth: 1, borderColor: '#BFDBFE', padding: 16, marginBottom: 20 },
+  maximizerHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  maximizerTitle: { fontSize: 15, fontWeight: '800', color: PRIMARY },
+  maximizerSub: { fontSize: 12, color: '#1D4ED8', marginTop: 2 },
+  maximizerLoadingText: { fontSize: 13, color: '#6B7280', fontStyle: 'italic' },
+  urgentBanner: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FEF2F2', borderRadius: 8, padding: 8, marginBottom: 10, borderWidth: 1, borderColor: '#FECACA' },
+  urgentText: { fontSize: 12, color: '#DC2626', flex: 1, fontWeight: '600' },
+  maximizerSectionLabel: { fontSize: 11, fontWeight: '700', color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8, marginTop: 10 },
+  maximizerItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 6 },
+  priorityNum: { width: 18, height: 18, borderRadius: 9, backgroundColor: PRIMARY, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 },
+  priorityNumText: { fontSize: 10, fontWeight: '800', color: '#FFFFFF' },
+  maximizerItemText: { fontSize: 13, color: '#374151', flex: 1, lineHeight: 18 },
+  nearMissBox: { backgroundColor: '#FFFBEB', borderRadius: 8, padding: 10, marginTop: 10, borderWidth: 1, borderColor: '#FDE68A' },
+  nearMissLabel: { fontSize: 11, fontWeight: '700', color: '#92400E', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 },
+  nearMissText: { fontSize: 13, color: '#78350F', lineHeight: 18 },
+  applicationTipBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: '#EEF2FF', borderRadius: 8, padding: 10, marginTop: 8, borderWidth: 1, borderColor: '#C7D2FE' },
+  applicationTipText: { fontSize: 13, color: '#3730A3', flex: 1, lineHeight: 18 },
 });

@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+﻿import { supabase } from './supabase';
 
 export interface DocumentAnalysis {
   documentType: string;
@@ -44,13 +44,46 @@ Respond ONLY with this JSON:
 }
 
 export async function getEligiblePrograms() {
-  return supabase.from('programs').select('*').eq('is_active', true).order('name');
+  return supabase.from('programs').select('*').eq('is_active', true).order('name').limit(50);
 }
 
-export async function getUserApplications(userId: string) {
-  return supabase.from('applications').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+export async function getUserApplications(userId: string, from = 0, to = 19) {
+  return supabase.from('applications').select('*').eq('user_id', userId).order('created_at', { ascending: false }).range(from, to);
 }
 
 export async function getNotifications(userId: string) {
   return supabase.from('notifications').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(20);
+}
+
+// ── AI Benefits Maximizer ──────────────────────────────────────
+
+export interface BenefitsMaximizerResult {
+  priorityActions: string[];
+  hiddenOpportunities: string[];
+  nearMissStrategy: string;
+  applicationTip: string;
+  estimatedUnclaimedValue: number;
+  urgentDeadline: string | null;
+}
+
+export async function getBenefitsMaximizer(params: {
+  profile: Record<string, unknown>;
+  eligiblePrograms: Array<{ name: string }>;
+  nearMissPrograms?: Array<{ name: string }>;
+}): Promise<BenefitsMaximizerResult | null> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) return null;
+  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
+  try {
+    const res = await fetch(`${supabaseUrl}/functions/v1/benefits-maximizer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(params),
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
 }

@@ -1,46 +1,24 @@
-import { View, Text, TouchableOpacity, ScrollView, Pressable, Animated, StyleSheet, Alert } from 'react-native';
+import { View, Text, ScrollView, Pressable, Animated, StyleSheet } from 'react-native';
+import PressableScale from '@/components/PressableScale';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState, useRef, useEffect } from 'react';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 import Purchases, { PurchasesPackage } from 'react-native-purchases';
+import { useToast } from '@/lib/useToast';
+import Toast from '@/components/Toast';
 
 const PRIMARY = '#1D4ED8';
 const PRIMARY_BG = '#DBEAFE';
 
-const PLANS = [
-  {
-    id: 'annual',
-    label: 'Annual',
-    price: '$49.99',
-    perMonth: '$4.17/mo',
-    badge: 'Most Popular',
-    savings: 'Save 58% — Best Value',
-    trial: '7-day free trial included',
-  },
-  {
-    id: 'monthly',
-    label: 'Monthly',
-    price: '$9.99',
-    perMonth: '$9.99/mo',
-    badge: null,
-    savings: null,
-    trial: null,
-  },
-];
-
-const FEATURES = [
-  { icon: 'search', text: 'Unlimited benefit searches' },
-  { icon: 'checkmark-done', text: 'Auto-filled applications' },
-  { icon: 'camera', text: 'Document scanner & OCR' },
-  { icon: 'alarm', text: 'Deadline reminders' },
-  { icon: 'document-text', text: 'Appeal letter templates' },
-  { icon: 'refresh', text: 'Eligibility updates' },
-];
+const FEATURE_ICONS = ['search', 'checkmark-done', 'camera', 'alarm', 'document-text', 'refresh'];
 
 export default function PaywallScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
+  const { toast, showToast, hideToast } = useToast();
   const [selectedPlan, setSelectedPlan] = useState('annual');
   const [loading, setLoading] = useState(false);
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
@@ -77,7 +55,7 @@ export default function PaywallScreen() {
           : p.packageType === 'MONTHLY'
       ) ?? packages[0];
       if (!pkg) {
-        Alert.alert('Error', 'No packages available. Please try again later.');
+        showToast('No packages available. Please try again later.', 'error');
         setLoading(false);
         return;
       }
@@ -85,9 +63,10 @@ export default function PaywallScreen() {
       if (customerInfo.entitlements.active['pro'] || Object.keys(customerInfo.entitlements.active).length > 0) {
         router.replace('/(tabs)/');
       }
-    } catch (e: any) {
-      if (!e.userCancelled) {
-        Alert.alert('Purchase Failed', e.message ?? 'Something went wrong. Please try again.');
+    } catch (e: unknown) {
+      const err = e as { userCancelled?: boolean; message?: string };
+      if (!err.userCancelled) {
+        showToast(err.message ?? 'Something went wrong. Please try again.', 'error');
       }
     } finally {
       setLoading(false);
@@ -99,13 +78,13 @@ export default function PaywallScreen() {
     try {
       const customerInfo = await Purchases.restorePurchases();
       if (Object.keys(customerInfo.entitlements.active).length > 0) {
-        Alert.alert('Success', 'Your purchases have been restored!');
+        showToast('Your purchases have been restored!', 'success');
         router.replace('/(tabs)/');
       } else {
-        Alert.alert('No Purchases', 'No active subscriptions found to restore.');
+        showToast('No active subscriptions found to restore.', 'info');
       }
     } catch {
-      Alert.alert('Error', 'Could not restore purchases. Please try again.');
+      showToast('Could not restore purchases. Please try again.', 'error');
     } finally {
       setLoading(false);
     }
@@ -116,17 +95,17 @@ export default function PaywallScreen() {
       <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
         <ScrollView showsVerticalScrollIndicator={false}>
           <View style={s.closeRow}>
-            <TouchableOpacity onPress={() => router.back()} style={s.closeBtn} accessibilityLabel="Close" accessibilityRole="button">
+            <PressableScale haptic="light" onPress={() => router.back()} style={s.closeBtn} accessibilityLabel="Close" accessibilityRole="button">
               <Ionicons name="close" size={22} color="#6B7280" />
-            </TouchableOpacity>
+            </PressableScale>
           </View>
 
           <View style={s.header}>
             <View style={[s.iconWrap, { backgroundColor: PRIMARY_BG }]}>
               <Ionicons name="business" size={34} color={PRIMARY} />
             </View>
-            <Text style={s.headline}>Get Every Benefit You Deserve</Text>
-            <Text style={s.subhead}>Most eligible Americans miss 3+ programs they qualify for.</Text>
+            <Text style={s.headline}>{t('paywall.headline')}</Text>
+            <Text style={s.subhead}>{t('paywall.subhead')}</Text>
           </View>
 
           <View style={s.socialBar}>
@@ -136,33 +115,34 @@ export default function PaywallScreen() {
               ))}
             </View>
             <Text style={s.socialText}>
-              Trusted by <Text style={s.socialBold}>15,000+</Text> users worldwide
+              {t('paywall.trustedBy', { count: '15,000' })}
             </Text>
           </View>
 
           <View style={s.features}>
-            {FEATURES.map((f, i) => (
+            {FEATURE_ICONS.map((icon, i) => (
               <View key={i} style={s.featureRow}>
                 <View style={[s.featureIcon, { backgroundColor: PRIMARY_BG }]}>
-                  <Ionicons name={f.icon as any} size={15} color={PRIMARY} />
+                  <Ionicons name={icon as any} size={15} color={PRIMARY} />
                 </View>
-                <Text style={s.featureText}>{f.text}</Text>
+                <Text style={s.featureText}>{t(`paywall.feature${i + 1}`)}</Text>
               </View>
             ))}
           </View>
 
           <View style={s.plans}>
-            {PLANS.map(plan => {
-              const sel = selectedPlan === plan.id;
+            {(['annual', 'monthly'] as const).map(planId => {
+              const sel = selectedPlan === planId;
+              const isAnnual = planId === 'annual';
               return (
                 <Pressable
-                  key={plan.id}
-                  onPress={() => { Haptics.selectionAsync(); setSelectedPlan(plan.id); }}
+                  key={planId}
+                  onPress={() => { Haptics.selectionAsync(); setSelectedPlan(planId); }}
                   style={[s.planCard, sel && { borderColor: PRIMARY, backgroundColor: PRIMARY + '10' }]}
                 >
-                  {plan.badge && (
+                  {isAnnual && (
                     <View style={[s.planBadge, { backgroundColor: PRIMARY }]}>
-                      <Text style={s.planBadgeText}>{plan.badge}</Text>
+                      <Text style={s.planBadgeText}>{t('paywall.mostPopular')}</Text>
                     </View>
                   )}
                   <View style={s.planLeft}>
@@ -170,14 +150,14 @@ export default function PaywallScreen() {
                       {sel && <View style={[s.radioDot, { backgroundColor: PRIMARY }]} />}
                     </View>
                     <View>
-                      <Text style={[s.planLabel, sel && { color: PRIMARY }]}>{plan.label}</Text>
-                      <Text style={s.planPerMonth}>{plan.perMonth}</Text>
-                      {plan.savings && <Text style={s.planSavings}>{plan.savings}</Text>}
+                      <Text style={[s.planLabel, sel && { color: PRIMARY }]}>{t(`paywall.${planId}`)}</Text>
+                      <Text style={s.planPerMonth}>{isAnnual ? '$4.17/mo' : '$9.99/mo'}</Text>
+                      {isAnnual && <Text style={s.planSavings}>{t('paywall.savingsBadge')}</Text>}
                     </View>
                   </View>
                   <View>
-                    <Text style={[s.planPrice, sel && { color: PRIMARY }]}>{plan.price}</Text>
-                    <Text style={s.planPeriod}>{plan.id === 'annual' ? '/year' : '/month'}</Text>
+                    <Text style={[s.planPrice, sel && { color: PRIMARY }]}>{isAnnual ? '$49.99' : '$9.99'}</Text>
+                    <Text style={s.planPeriod}>{t(isAnnual ? 'paywall.perYear' : 'paywall.perMonth')}</Text>
                   </View>
                 </Pressable>
               );
@@ -187,33 +167,33 @@ export default function PaywallScreen() {
           {selectedPlan === 'annual' && (
             <View style={s.trialNote}>
               <Ionicons name="gift-outline" size={16} color="#059669" />
-              <Text style={s.trialText}>First 7 days free — cancel anytime before trial ends</Text>
+              <Text style={s.trialText}>{t('paywall.trialNote')}</Text>
             </View>
           )}
 
           <View style={s.cta}>
             <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-              <TouchableOpacity
+              <PressableScale
+                haptic="medium"
                 onPress={handleSubscribe}
                 disabled={loading}
                 style={[s.ctaBtn, { backgroundColor: PRIMARY }]}
               >
                 <Text style={s.ctaBtnText}>
-                  {loading ? 'Processing...' : selectedPlan === 'annual' ? '🎁  Start Free Trial' : '  Subscribe Now'}
+                  {loading ? t('paywall.processing') : selectedPlan === 'annual' ? `🎁  ${t('paywall.startTrial')}` : `  ${t('paywall.subscribeNow')}`}
                 </Text>
-              </TouchableOpacity>
+              </PressableScale>
             </Animated.View>
-            <TouchableOpacity onPress={() => router.replace('/(tabs)/')} style={s.skipBtn}>
-              <Text style={s.skipText}>Maybe later</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.restoreBtn} onPress={handleRestore}>
-              <Text style={s.restoreText}>Restore Purchases</Text>
-            </TouchableOpacity>
-            <Text style={s.legalText}>
-              Cancel anytime. Payment charged to Apple ID / Google Play. Auto-renews unless cancelled 24h before period ends.
-            </Text>
+            <PressableScale haptic="light" onPress={() => router.replace('/(tabs)/')} style={s.skipBtn}>
+              <Text style={s.skipText}>{t('paywall.maybeLater')}</Text>
+            </PressableScale>
+            <PressableScale haptic="light" style={s.restoreBtn} onPress={handleRestore}>
+              <Text style={s.restoreText}>{t('paywall.restore')}</Text>
+            </PressableScale>
+            <Text style={s.legalText}>{t('paywall.legalText')}</Text>
           </View>
         </ScrollView>
+        <Toast {...toast} onHide={hideToast} />
       </Animated.View>
     </SafeAreaView>
   );

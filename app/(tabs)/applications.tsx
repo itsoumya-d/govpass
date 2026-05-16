@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
   ScrollView,
   TextInput,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +14,10 @@ import EmptyState from '@/components/EmptyState';
 import { SkeletonListItem } from '@/components/SkeletonLoader';
 import { supabase } from '@/lib/supabase';
 import { getUserApplications } from '@/lib/api';
+import { useTranslation } from 'react-i18next';
+import { router } from 'expo-router';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import PressableScale from '@/components/PressableScale';
 
 const PRIMARY = '#1E40AF';
 
@@ -63,40 +67,76 @@ function toAppItem(row: any): ApplicationItem {
   };
 }
 
-const STATUS_CONFIG: Record<AppStatus, { label: string; color: string; bg: string; icon: string }> = {
-  in_review: { label: 'In Review', color: '#1E40AF', bg: 'rgba(30,64,175,0.15)', icon: 'hourglass-outline' },
-  approved: { label: 'Approved', color: '#059669', bg: 'rgba(5,150,105,0.15)', icon: 'checkmark-circle-outline' },
-  pending: { label: 'Pending', color: '#D97706', bg: 'rgba(217,119,6,0.15)', icon: 'time-outline' },
-  submitted: { label: 'Submitted', color: '#1E40AF', bg: 'rgba(30,64,175,0.15)', icon: 'paper-plane-outline' },
-  denied: { label: 'Denied', color: '#B91C1C', bg: 'rgba(185,28,28,0.15)', icon: 'close-circle-outline' },
-  draft: { label: 'Draft', color: '#636366', bg: 'rgba(99,99,102,0.15)', icon: 'create-outline' },
+const STATUS_CONFIG: Record<AppStatus, { labelKey: string; color: string; bg: string; icon: string }> = {
+  in_review: { labelKey: 'applications.statusInReview', color: '#1E40AF', bg: 'rgba(30,64,175,0.15)', icon: 'hourglass-outline' },
+  approved: { labelKey: 'applications.statusApproved', color: '#059669', bg: 'rgba(5,150,105,0.15)', icon: 'checkmark-circle-outline' },
+  pending: { labelKey: 'applications.statusPending', color: '#D97706', bg: 'rgba(217,119,6,0.15)', icon: 'time-outline' },
+  submitted: { labelKey: 'applications.statusSubmitted', color: '#1E40AF', bg: 'rgba(30,64,175,0.15)', icon: 'paper-plane-outline' },
+  denied: { labelKey: 'applications.statusDenied', color: '#B91C1C', bg: 'rgba(185,28,28,0.15)', icon: 'close-circle-outline' },
+  draft: { labelKey: 'applications.statusDraft', color: '#636366', bg: 'rgba(99,99,102,0.15)', icon: 'create-outline' },
 };
 
-const FILTER_OPTIONS: { key: AppStatus | 'all'; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'in_review', label: 'In Review' },
-  { key: 'submitted', label: 'Submitted' },
-  { key: 'approved', label: 'Approved' },
-  { key: 'pending', label: 'Pending' },
-  { key: 'denied', label: 'Denied' },
-  { key: 'draft', label: 'Draft' },
+const FILTER_OPTIONS: { key: AppStatus | 'all'; labelKey: string }[] = [
+  { key: 'all', labelKey: 'applications.filterAll' },
+  { key: 'in_review', labelKey: 'applications.inReview' },
+  { key: 'submitted', labelKey: 'applications.submitted' },
+  { key: 'approved', labelKey: 'applications.approved' },
+  { key: 'pending', labelKey: 'applications.pending' },
+  { key: 'denied', labelKey: 'applications.denied' },
+  { key: 'draft', labelKey: 'applications.draft' },
 ];
 
+const PAGE_SIZE = 20;
+
 export default function ApplicationsScreen() {
+  const { t } = useTranslation();
   const [applications, setApplications] = useState<ApplicationItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<AppStatus | 'all'>('all');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; }
-      const { data } = await getUserApplications(user.id);
-      setApplications((data ?? []).map(toAppItem));
+      setUserId(user.id);
+      const { data } = await getUserApplications(user.id, 0, PAGE_SIZE - 1);
+      const items = data ?? [];
+      setApplications(items.map(toAppItem));
+      setHasMore(items.length === PAGE_SIZE);
       setLoading(false);
     })();
   }, []);
+
+  const onRefresh = async () => {
+    if (!userId) return;
+    setRefreshing(true);
+    setPage(0);
+    setHasMore(true);
+    const { data } = await getUserApplications(userId, 0, PAGE_SIZE - 1);
+    const items = data ?? [];
+    setApplications(items.map(toAppItem));
+    setHasMore(items.length === PAGE_SIZE);
+    setRefreshing(false);
+  };
+
+  const loadMore = async () => {
+    if (loadingMore || !hasMore || !userId) return;
+    setLoadingMore(true);
+    const nextPage = page + 1;
+    const from = nextPage * PAGE_SIZE;
+    const { data } = await getUserApplications(userId, from, from + PAGE_SIZE - 1);
+    const items = data ?? [];
+    setApplications(prev => [...prev, ...items.map(toAppItem)]);
+    setPage(nextPage);
+    setHasMore(items.length === PAGE_SIZE);
+    setLoadingMore(false);
+  };
 
   const filtered = applications.filter((app) => {
     const matchesSearch =
@@ -121,10 +161,10 @@ export default function ApplicationsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Applications</Text>
-        <Text style={styles.headerCount}>{applications.length} total</Text>
-      </View>
+      <Animated.View entering={FadeInDown.delay(80).duration(500).springify()} style={styles.header}>
+        <Text style={styles.headerTitle}>{t('applications.title')}</Text>
+        <Text style={styles.headerCount}>{t('applications.total', { count: applications.length })}</Text>
+      </Animated.View>
 
       {/* Search */}
       <View style={styles.searchContainer}>
@@ -132,14 +172,14 @@ export default function ApplicationsScreen() {
         <TextInput
           value={searchQuery}
           onChangeText={setSearchQuery}
-          placeholder="Search applications..."
+          placeholder={t('applications.searchApplications')}
           placeholderTextColor="#636366"
           style={styles.searchInput}
         />
         {searchQuery.length > 0 && (
-          <TouchableOpacity accessibilityRole="button" onPress={() => setSearchQuery('')}>
+          <PressableScale haptic="light" accessibilityRole="button" onPress={() => setSearchQuery('')}>
             <Ionicons name="close-circle" size={18} color="#636366" />
-          </TouchableOpacity>
+          </PressableScale>
         )}
       </View>
 
@@ -151,15 +191,15 @@ export default function ApplicationsScreen() {
         contentContainerStyle={styles.filterContent}
       >
         {FILTER_OPTIONS.map((opt) => (
-          <TouchableOpacity accessibilityRole="button"
+          <PressableScale haptic="light"
             key={opt.key}
             onPress={() => setActiveFilter(opt.key)}
             style={[styles.filterChip, activeFilter === opt.key && styles.filterChipActive]}
           >
             <Text style={[styles.filterChipText, activeFilter === opt.key && styles.filterChipTextActive]}>
-              {opt.label}
+              {t(opt.labelKey)}
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
         ))}
       </ScrollView>
 
@@ -168,70 +208,88 @@ export default function ApplicationsScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PRIMARY} colors={[PRIMARY]} />}
       >
         {filtered.length === 0 ? (
           <EmptyState
             icon="document-text-outline"
-            title="No applications"
-            description="Start your eligibility check to find programs you qualify for"
+            title={t('applications.noApplications')}
+            description={t('applications.noApplicationsDesc')}
+            actionLabel="Check Eligibility"
+            onAction={() => router.push('/(tabs)/eligibility')}
           />
         ) : (
-          filtered.map((app) => {
+          filtered.map((app, index) => {
             const statusCfg = STATUS_CONFIG[app.status] ?? STATUS_CONFIG.pending;
             return (
-              <TouchableOpacity accessibilityRole="button" key={app.id} style={styles.appCard} activeOpacity={0.8}>
-                {/* Top row */}
-                <View style={styles.appCardTop}>
-                  <View style={[styles.appIconContainer, { backgroundColor: app.iconBg }]}>
-                    <Ionicons name={app.icon as any} size={22} color={app.iconColor} />
+              <Animated.View key={app.id} entering={FadeInDown.delay(index * 45).duration(260).springify()}>
+                <PressableScale haptic="light" style={styles.appCard} onPress={() => router.push({ pathname: '/applications/new', params: { programId: app.id, programName: app.program } })}>
+                  {/* Top row */}
+                  <View style={styles.appCardTop}>
+                    <View style={[styles.appIconContainer, { backgroundColor: app.iconBg }]}>
+                      <Ionicons name={app.icon as any} size={22} color={app.iconColor} />
+                    </View>
+                    <View style={styles.appCardInfo}>
+                      <Text style={styles.appProgramName}>{app.program}</Text>
+                      <Text style={styles.appAgency}>{app.agency}</Text>
+                    </View>
+                    <View style={[styles.statusBadge, { backgroundColor: statusCfg.bg }]}>
+                      <Ionicons name={statusCfg.icon as any} size={12} color={statusCfg.color} />
+                      <Text style={[styles.statusText, { color: statusCfg.color }]}>
+                        {t(statusCfg.labelKey)}
+                      </Text>
+                    </View>
                   </View>
-                  <View style={styles.appCardInfo}>
-                    <Text style={styles.appProgramName}>{app.program}</Text>
-                    <Text style={styles.appAgency}>{app.agency}</Text>
-                  </View>
-                  <View style={[styles.statusBadge, { backgroundColor: statusCfg.bg }]}>
-                    <Ionicons name={statusCfg.icon as any} size={12} color={statusCfg.color} />
-                    <Text style={[styles.statusText, { color: statusCfg.color }]}>
-                      {statusCfg.label}
-                    </Text>
-                  </View>
-                </View>
 
-                {/* Divider */}
-                <View style={styles.cardDivider} />
+                  {/* Divider */}
+                  <View style={styles.cardDivider} />
 
-                {/* Bottom row */}
-                <View style={styles.appCardBottom}>
-                  <View style={styles.appMeta}>
-                    <Text style={styles.appMetaLabel}>Reference</Text>
-                    <Text style={styles.appMetaValue}>{app.ref}</Text>
+                  {/* Bottom row */}
+                  <View style={styles.appCardBottom}>
+                    <View style={styles.appMeta}>
+                      <Text style={styles.appMetaLabel}>{t('applications.reference')}</Text>
+                      <Text style={styles.appMetaValue}>{app.ref}</Text>
+                    </View>
+                    <View style={styles.appMeta}>
+                      <Text style={styles.appMetaLabel}>{t('applications.submitted')}</Text>
+                      <Text style={styles.appMetaValue}>{app.submittedDate}</Text>
+                    </View>
+                    <View style={styles.appMeta}>
+                      <Text style={styles.appMetaLabel}>{t('applications.updatedLabel')}</Text>
+                      <Text style={styles.appMetaValue}>{app.updatedDate}</Text>
+                    </View>
                   </View>
-                  <View style={styles.appMeta}>
-                    <Text style={styles.appMetaLabel}>Submitted</Text>
-                    <Text style={styles.appMetaValue}>{app.submittedDate}</Text>
-                  </View>
-                  <View style={styles.appMeta}>
-                    <Text style={styles.appMetaLabel}>Updated</Text>
-                    <Text style={styles.appMetaValue}>{app.updatedDate}</Text>
-                  </View>
-                </View>
 
-                {/* View details arrow */}
-                <View style={styles.viewDetails}>
-                  <Text style={styles.viewDetailsText}>View Details</Text>
-                  <Ionicons name="chevron-forward" size={14} color={PRIMARY} />
-                </View>
-              </TouchableOpacity>
+                  {/* View details arrow */}
+                  <View style={styles.viewDetails}>
+                    <Text style={styles.viewDetailsText}>{t('applications.viewDetails')}</Text>
+                    <Ionicons name="chevron-forward" size={14} color={PRIMARY} />
+                  </View>
+                </PressableScale>
+              </Animated.View>
             );
           })
+        )}
+        {hasMore && filtered.length > 0 && (
+          <PressableScale
+            haptic="light"
+            accessibilityRole="button"
+            style={{ alignItems: 'center', paddingVertical: 16 }}
+            onPress={loadMore}
+            disabled={loadingMore}
+          >
+            {loadingMore
+              ? <ActivityIndicator color={PRIMARY} />
+              : <Text style={{ color: PRIMARY, fontSize: 14, fontWeight: '600' }}>Load More</Text>}
+          </PressableScale>
         )}
       </ScrollView>
 
       {/* FAB */}
-      <TouchableOpacity accessibilityRole="button" style={styles.fab} activeOpacity={0.85}>
+      <PressableScale haptic="medium" style={styles.fab} onPress={() => router.push('/(tabs)/apply')}>
         <Ionicons name="add" size={24} color="#FFFFFF" />
-        <Text style={styles.fabText}>New Application</Text>
-      </TouchableOpacity>
+        <Text style={styles.fabText}>{t('applications.newApplication')}</Text>
+      </PressableScale>
     </SafeAreaView>
   );
 }

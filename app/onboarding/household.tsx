@@ -2,11 +2,11 @@ import { useState } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
   ScrollView,
   Platform,
 } from 'react-native';
+import PressableScale from '@/components/PressableScale';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -85,26 +85,26 @@ export default function HouseholdScreen() {
           <Text style={styles.sectionLabel}>Household Size</Text>
           <Text style={styles.sectionHint}>Including yourself</Text>
           <View style={styles.counterRow}>
-            <TouchableOpacity accessibilityRole="button"
+            <PressableScale haptic="light"
+              accessibilityRole="button"
               onPress={() => adjustCount(householdSize, -1, setHouseholdSizeLocal, 1)}
               style={[styles.counterBtn, householdSize <= 1 && styles.counterBtnDisabled]}
-              activeOpacity={0.7}
             >
               <Ionicons name="remove" size={22} color={householdSize <= 1 ? '#636366' : '#FFFFFF'} />
-            </TouchableOpacity>
+            </PressableScale>
             <View style={styles.counterValue}>
               <Text style={styles.counterText}>{householdSize === 9 ? '8+' : householdSize}</Text>
               <Text style={styles.counterSubtext}>
                 {householdSize === 1 ? 'person' : 'people'}
               </Text>
             </View>
-            <TouchableOpacity accessibilityRole="button"
+            <PressableScale haptic="light"
+              accessibilityRole="button"
               onPress={() => adjustCount(householdSize, 1, setHouseholdSizeLocal, 1, 9)}
               style={[styles.counterBtn, householdSize >= 9 && styles.counterBtnDisabled]}
-              activeOpacity={0.7}
             >
               <Ionicons name="add" size={22} color={householdSize >= 9 ? '#636366' : '#FFFFFF'} />
-            </TouchableOpacity>
+            </PressableScale>
           </View>
         </View>
 
@@ -113,26 +113,26 @@ export default function HouseholdScreen() {
           <Text style={styles.sectionLabel}>Children Under 18</Text>
           <Text style={styles.sectionHint}>Affects SNAP, childcare, and school programs</Text>
           <View style={styles.counterRow}>
-            <TouchableOpacity accessibilityRole="button"
+            <PressableScale haptic="light"
+              accessibilityRole="button"
               onPress={() => adjustCount(children, -1, setChildren, 0)}
               style={[styles.counterBtn, children <= 0 && styles.counterBtnDisabled]}
-              activeOpacity={0.7}
             >
               <Ionicons name="remove" size={22} color={children <= 0 ? '#636366' : '#FFFFFF'} />
-            </TouchableOpacity>
+            </PressableScale>
             <View style={styles.counterValue}>
               <Text style={styles.counterText}>{children}</Text>
               <Text style={styles.counterSubtext}>
                 {children === 1 ? 'child' : 'children'}
               </Text>
             </View>
-            <TouchableOpacity accessibilityRole="button"
+            <PressableScale haptic="light"
+              accessibilityRole="button"
               onPress={() => adjustCount(children, 1, setChildren, 0, 9)}
               style={[styles.counterBtn]}
-              activeOpacity={0.7}
             >
               <Ionicons name="add" size={22} color="#FFFFFF" />
-            </TouchableOpacity>
+            </PressableScale>
           </View>
         </View>
 
@@ -140,10 +140,10 @@ export default function HouseholdScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>State of Residence</Text>
           <Text style={styles.sectionHint}>Benefits vary by state</Text>
-          <TouchableOpacity accessibilityRole="button"
+          <PressableScale haptic="light"
+            accessibilityRole="button"
             onPress={() => setShowStateDropdown(!showStateDropdown)}
             style={[styles.dropdownTrigger, selectedState ? styles.dropdownTriggerActive : null]}
-            activeOpacity={0.8}
           >
             <Text style={[styles.dropdownText, !selectedState && { color: '#636366' }]}>
               {selectedState || 'Select your state'}
@@ -153,13 +153,14 @@ export default function HouseholdScreen() {
               size={18}
               color="#8E8E93"
             />
-          </TouchableOpacity>
+          </PressableScale>
 
           {showStateDropdown && (
             <View style={styles.stateDropdown}>
               <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled>
                 {US_STATES.map((s) => (
-                  <TouchableOpacity accessibilityRole="button"
+                  <PressableScale haptic="light"
+                    accessibilityRole="button"
                     key={s}
                     onPress={() => {
                       setSelectedState(s);
@@ -181,7 +182,7 @@ export default function HouseholdScreen() {
                     {selectedState === s && (
                       <Ionicons name="checkmark" size={16} color={PRIMARY} />
                     )}
-                  </TouchableOpacity>
+                  </PressableScale>
                 ))}
               </ScrollView>
             </View>
@@ -194,14 +195,14 @@ export default function HouseholdScreen() {
           <Text style={styles.sectionHint}>Approximate gross income for your household</Text>
           <View style={styles.incomeGrid}>
             {INCOME_RANGES.map((range) => (
-              <TouchableOpacity accessibilityRole="button"
+              <PressableScale haptic="light"
+                accessibilityRole="button"
                 key={range}
                 onPress={() => setSelectedIncome(range)}
                 style={[
                   styles.incomeChip,
                   selectedIncome === range && styles.incomeChipSelected,
                 ]}
-                activeOpacity={0.8}
               >
                 <Text
                   style={[
@@ -211,23 +212,23 @@ export default function HouseholdScreen() {
                 >
                   {range}
                 </Text>
-              </TouchableOpacity>
+              </PressableScale>
             ))}
           </View>
         </View>
 
         {/* Continue Button */}
-        <TouchableOpacity accessibilityRole="button"
+        <PressableScale haptic="medium"
+          accessibilityRole="button"
           onPress={handleContinue}
           disabled={!canContinue}
           style={[styles.continueButton, !canContinue && styles.continueButtonDisabled]}
-          activeOpacity={0.85}
         >
           <Text style={[styles.continueButtonText, !canContinue && styles.continueButtonTextDisabled]}>
             Continue
           </Text>
           <Ionicons name="arrow-forward" size={18} color={canContinue ? '#FFFFFF' : '#636366'} />
-        </TouchableOpacity>
+        </PressableScale>
 
         <View style={{ height: 32 }} />
       </ScrollView>

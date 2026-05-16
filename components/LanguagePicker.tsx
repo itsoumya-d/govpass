@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { changeLanguage } from '@/lib/i18n';
+import * as Haptics from 'expo-haptics';
 
 const LANGUAGES = [
   { code: 'en', label: 'English', nativeLabel: 'English', rtl: false },
@@ -32,6 +33,7 @@ export default function LanguagePicker() {
   const currentLang = LANGUAGES.find((l) => l.code === i18n.language) ?? LANGUAGES[0];
 
   const handleSelect = async (code: string) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     await changeLanguage(code);
     setVisible(false);
   };
@@ -42,7 +44,10 @@ export default function LanguagePicker() {
         accessibilityRole="button"
         accessibilityLabel={t('settings.language')}
         style={s.trigger}
-        onPress={() => setVisible(true)}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          setVisible(true);
+        }}
       >
         <Ionicons name="globe-outline" size={20} color="#1E40AF" />
         <Text style={s.triggerLabel}>{t('settings.language')}</Text>
