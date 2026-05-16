@@ -26,6 +26,11 @@ interface Program {
   icon?: string | null;
   iconColor?: string | null;
   status?: string | null;
+  eligibility_status?: string | null;
+  color?: string | null;
+  bg_color?: string | null;
+  completion_pct?: number | null;
+  deadline_days?: number | null;
 }
 
 interface Application {
@@ -108,13 +113,13 @@ function TotalBenefitsCard({ programs }: { programs: Program[] }) {
         </View>
       </View>
       <Text style={styles.totalBenefitsValue}>
-        <AnimatedCounter target={totalAnnual} prefix="$" suffix="/yr" />
+        {totalAnnual > 0 ? <AnimatedCounter target={totalAnnual} prefix="$" suffix="/yr" /> : 'Varies by program'}
       </Text>
       <View style={styles.totalBenefitsDivider} />
       <View style={styles.totalBenefitsStats}>
         <View style={styles.totalBenefitsStat}>
           <Text style={styles.totalBenefitsStatValue}>
-            <AnimatedCounter target={monthly} prefix="$" suffix="" />
+            {monthly > 0 ? <AnimatedCounter target={monthly} prefix="$" suffix="" /> : '—'}
           </Text>
           <Text style={styles.totalBenefitsStatLabel}>Est. / month</Text>
         </View>
@@ -317,7 +322,7 @@ export default function HomeScreen() {
           </View>
         ) : (
           programs.slice(0, 4).map((program, index) => {
-            const eligibilityStatus = program.eligibility_status ?? 'eligible';
+            const eligibilityStatus = (program.eligibility_status ?? 'eligible').toLowerCase();
             const eligibility = ELIGIBILITY_CONFIG[eligibilityStatus] ?? ELIGIBILITY_CONFIG['eligible'];
             const programColor = program.color ?? PRIMARY;
             const programBgColor = program.bg_color ?? 'rgba(30, 64, 175, 0.12)';
