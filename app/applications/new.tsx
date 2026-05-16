@@ -1,4 +1,11 @@
 import React, { useState, useEffect } from 'react';
+
+interface ProgramOption {
+  id: string;
+  name: string;
+  description?: string | null;
+  benefits?: string | null;
+}
 import {
   View, Text, ScrollView, TextInput,
   StyleSheet, ActivityIndicator,
@@ -33,7 +40,7 @@ export default function NewApplicationScreen() {
   const { user } = useAuthStore();
   const { toast, showToast, hideToast } = useToast();
 
-  const [programs, setPrograms] = useState<any[]>([]);
+  const [programs, setPrograms] = useState<ProgramOption[]>([]);
   const [loadingPrograms, setLoadingPrograms] = useState(true);
   const [step, setStep] = useState(1);
   const [selectedProgram, setSelectedProgram] = useState(params.programId || '');

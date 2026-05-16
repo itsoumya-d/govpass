@@ -171,7 +171,7 @@ function Input({
   value, onChangeText, placeholder, keyboardType = 'default', maxLength, secureTextEntry, autoCapitalize,
 }: {
   value: string; onChangeText: (v: string) => void; placeholder?: string;
-  keyboardType?: any; maxLength?: number; secureTextEntry?: boolean; autoCapitalize?: any;
+  keyboardType?: import('react-native').KeyboardTypeOptions; maxLength?: number; secureTextEntry?: boolean; autoCapitalize?: import('react-native').TextInputProps['autoCapitalize'];
 }) {
   const focused = useSharedValue(0);
   const animBorder = useAnimatedStyle(() => ({
@@ -315,7 +315,7 @@ function ProgramSelect({ onSelect }: { onSelect: (p: ProgramConfig) => void }) {
 
 // ── Per-Program Step Content ──────────────────────────────────────────────────
 
-function StepPersonalInfo({ form, set }: { form: BaseForm; set: (k: keyof BaseForm) => (v: any) => void }) {
+function StepPersonalInfo({ form, set }: { form: BaseForm; set: (k: keyof BaseForm) => (v: string | boolean) => void }) {
   return (
     <View>
       <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -346,7 +346,7 @@ function StepPersonalInfo({ form, set }: { form: BaseForm; set: (k: keyof BaseFo
   );
 }
 
-function StepHousehold({ form, set }: { form: BaseForm; set: (k: keyof BaseForm) => (v: any) => void }) {
+function StepHousehold({ form, set }: { form: BaseForm; set: (k: keyof BaseForm) => (v: string | boolean) => void }) {
   return (
     <View>
       <Field label="Household Size">
@@ -377,7 +377,7 @@ function StepHousehold({ form, set }: { form: BaseForm; set: (k: keyof BaseForm)
   );
 }
 
-function StepIncome({ form, set }: { form: BaseForm; set: (k: keyof BaseForm) => (v: any) => void }) {
+function StepIncome({ form, set }: { form: BaseForm; set: (k: keyof BaseForm) => (v: string | boolean) => void }) {
   return (
     <View>
       <Field label="Employment Status">
@@ -404,7 +404,7 @@ function StepIncome({ form, set }: { form: BaseForm; set: (k: keyof BaseForm) =>
   );
 }
 
-function StepMedicaidInsurance({ form, set }: { form: BaseForm; set: (k: keyof BaseForm) => (v: any) => void }) {
+function StepMedicaidInsurance({ form, set }: { form: BaseForm; set: (k: keyof BaseForm) => (v: string | boolean) => void }) {
   return (
     <View>
       <StepIncome form={form} set={set} />
@@ -425,7 +425,7 @@ function StepMedicaidInsurance({ form, set }: { form: BaseForm; set: (k: keyof B
   );
 }
 
-function StepDisability({ form, set }: { form: BaseForm; set: (k: keyof BaseForm) => (v: any) => void }) {
+function StepDisability({ form, set }: { form: BaseForm; set: (k: keyof BaseForm) => (v: string | boolean) => void }) {
   return (
     <View>
       <ToggleRow
@@ -452,7 +452,7 @@ function StepDisability({ form, set }: { form: BaseForm; set: (k: keyof BaseForm
   );
 }
 
-function StepLIHEAPHousing({ form, set }: { form: BaseForm; set: (k: keyof BaseForm) => (v: any) => void }) {
+function StepLIHEAPHousing({ form, set }: { form: BaseForm; set: (k: keyof BaseForm) => (v: string | boolean) => void }) {
   return (
     <View>
       <StepHousehold form={form} set={set} />
@@ -472,7 +472,7 @@ function StepLIHEAPHousing({ form, set }: { form: BaseForm; set: (k: keyof BaseF
   );
 }
 
-function StepWICEligibility({ form, set }: { form: BaseForm; set: (k: keyof BaseForm) => (v: any) => void }) {
+function StepWICEligibility({ form, set }: { form: BaseForm; set: (k: keyof BaseForm) => (v: string | boolean) => void }) {
   return (
     <View>
       <Text style={styles.stepSubtitle}>WIC is available if you are:</Text>
@@ -503,7 +503,7 @@ function StepWICEligibility({ form, set }: { form: BaseForm; set: (k: keyof Base
   );
 }
 
-function StepWICHousehold({ form, set }: { form: BaseForm; set: (k: keyof BaseForm) => (v: any) => void }) {
+function StepWICHousehold({ form, set }: { form: BaseForm; set: (k: keyof BaseForm) => (v: string | boolean) => void }) {
   return (
     <View>
       <Field label="Household Size">
@@ -517,7 +517,7 @@ function StepWICHousehold({ form, set }: { form: BaseForm; set: (k: keyof BaseFo
   );
 }
 
-function StepDocuments({ programId, form, set }: { programId: ProgramId; form: BaseForm; set: (k: keyof BaseForm) => (v: any) => void }) {
+function StepDocuments({ programId, form, set }: { programId: ProgramId; form: BaseForm; set: (k: keyof BaseForm) => (v: string | boolean) => void }) {
   const baseDocList: [keyof BaseForm, string][] = [
     ['hasId', 'Government-issued Photo ID (driver\'s license, passport, state ID)'],
     ['hasSsCard', 'Social Security Card or proof of SSN'],
@@ -665,7 +665,7 @@ function ApplicationWizard({ program, onBack }: { program: ProgramConfig; onBack
     })();
   }, []);
 
-  const set = useCallback((key: keyof BaseForm) => (val: any) =>
+  const set = useCallback((key: keyof BaseForm) => (val: string | boolean) =>
     setForm(f => ({ ...f, [key]: val })), []);
 
   const canProceed = (): boolean => {

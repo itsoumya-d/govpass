@@ -11,6 +11,16 @@ import { getNotifications } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import * as Haptics from 'expo-haptics';
 
+interface Alert {
+  id: string;
+  is_read: boolean;
+  title?: string | null;
+  body?: string | null;
+  created_at: string;
+  icon?: string | null;
+  color?: string | null;
+}
+
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
@@ -23,7 +33,7 @@ function timeAgo(dateStr: string): string {
 export default function AlertsScreen() {
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(true);
-  const [alerts, setAlerts] = useState<any[]>([]);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
 
   useEffect(() => {
     if (!user) return;

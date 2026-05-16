@@ -50,7 +50,15 @@ function formatDate(iso: string | null): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function toAppItem(row: any): ApplicationItem {
+interface ApplicationRow {
+  id: string;
+  program: string;
+  status?: string | null;
+  submitted_at?: string | null;
+  updated_at?: string | null;
+}
+
+function toAppItem(row: ApplicationRow): ApplicationItem {
   const cfg = PROGRAM_CONFIG[row.program] ?? DEFAULT_PROGRAM;
   const shortId = String(row.id).slice(-6).toUpperCase();
   return {

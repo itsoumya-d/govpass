@@ -18,6 +18,27 @@ import { getEligiblePrograms, getUserApplications, getNotifications } from '@/li
 import { useTranslation } from 'react-i18next';
 import Toast from '@/components/Toast';
 
+interface Program {
+  id: string;
+  name: string;
+  annual_value?: number | null;
+  max_benefit_annual?: number | null;
+  icon?: string | null;
+  iconColor?: string | null;
+  status?: string | null;
+}
+
+interface Application {
+  id: string;
+  status: string;
+  program_id?: string | null;
+}
+
+interface NotificationRow {
+  id: string;
+  is_read: boolean;
+}
+
 const PRIMARY = '#1E40AF';
 const SECONDARY = '#059669';
 
@@ -68,7 +89,7 @@ function AnimatedCounter({ target, prefix = '$', suffix = '' }: { target: number
 }
 
 // Total annual benefits value card
-function TotalBenefitsCard({ programs }: { programs: any[] }) {
+function TotalBenefitsCard({ programs }: { programs: Program[] }) {
   const totalAnnual = programs.length > 0
     ? programs.reduce((sum, p) => sum + (p.annual_value ?? p.max_benefit_annual ?? 0), 0)
     : 0;
@@ -136,8 +157,8 @@ function AnimatedProgressBar({ progress, color }: { progress: number; color: str
 export default function HomeScreen() {
   const { t } = useTranslation();
   const { user } = useAuthStore();
-  const [programs, setPrograms] = useState<any[]>([]);
-  const [applications, setApplications] = useState<any[]>([]);
+  const [programs, setPrograms] = useState<Program[]>([]);
+  const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasUnreadAlerts, setHasUnreadAlerts] = useState(false);
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' | 'warning' }>({ visible: false, message: '', type: 'error' });
@@ -153,7 +174,7 @@ export default function HomeScreen() {
       .then(([{ data: programsData }, { data: appsData }, { data: notifs }]) => {
         if (programsData) setPrograms(programsData);
         if (appsData) setApplications(appsData);
-        if (notifs) setHasUnreadAlerts((notifs as any[]).some((n) => !n.is_read));
+        if (notifs) setHasUnreadAlerts((notifs as NotificationRow[]).some((n) => !n.is_read));
       })
       .catch(() => setToast({ visible: true, message: t('common.loadError', { defaultValue: 'Failed to load benefits data' }), type: 'error' }))
       .finally(() => setLoading(false));
