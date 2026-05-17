@@ -15,6 +15,7 @@ import { shareMultipleResults } from '../../lib/share';
 import { supabase } from '../../lib/supabase';
 import { useTranslation } from 'react-i18next';
 import { getBenefitsMaximizer, type BenefitsMaximizerResult } from '../../lib/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const PRIMARY = '#1E40AF';
 const SUCCESS = '#059669';
@@ -240,8 +241,9 @@ export default function EligibilityScreen() {
       await new Promise(r => setTimeout(r, 300));
       const programs = checkEligibility(profile);
       setResults(programs);
-      // Persist profile in background
+      // Persist profile in background; mark eligibility screener as completed
       saveProfileToSupabase(profile).catch(() => {});
+      AsyncStorage.setItem('eligibility_run', 'true').catch(() => {});
       setComputing(false);
       // Trigger AI benefits maximizer asynchronously
       setMaximizerLoading(true);
