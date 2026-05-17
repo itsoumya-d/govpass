@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useToast } from '@/lib/useToast';
 import Toast from '@/components/Toast';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import Reanimated, {
   FadeInDown, useSharedValue, withSpring, withTiming,
@@ -92,6 +93,13 @@ export default function ScanScreen() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [ocrStep, setOcrStep] = useState<OcrStep>(0);
   const [result, setResult] = useState<DocumentAnalysis | null>(null);
+  const [showExplanation, setShowExplanation] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem('govpass_scan_explained').then(val => {
+      if (val !== 'true') setShowExplanation(true);
+    });
+  }, []);
   const cameraRef = useRef<CameraView>(null);
   const stepTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -287,6 +295,44 @@ export default function ScanScreen() {
           </GestureDetector>
         </View>
       )}
+      {showExplanation && (
+        <Reanimated.View entering={FadeInDown.duration(350)} style={s.explanationOverlay}>
+          <View style={s.explanationCard}>
+            <View style={s.explanationIcon}>
+              <Ionicons name="document-text" size={32} color="#1E40AF" />
+            </View>
+            <Text style={s.explanationTitle}>Scan documents to find benefits</Text>
+            <Text style={s.explanationSub}>
+              GovPass AI reads your documents and matches them against 500+ federal and state programs.
+            </Text>
+            <View style={s.explanationPoints}>
+              {[
+                { icon: 'shield-checkmark-outline', text: 'Your data stays private — never shared' },
+                { icon: 'flash-outline', text: 'Instant extraction in under 5 seconds' },
+                { icon: 'search-outline', text: 'Matches income, age, family size, and more' },
+              ].map(p => (
+                <View key={p.text} style={s.explanationPoint}>
+                  <Ionicons name={p.icon as any} size={16} color="#1E40AF" />
+                  <Text style={s.explanationPointText}>{p.text}</Text>
+                </View>
+              ))}
+            </View>
+            <PressableScale
+              haptic="medium"
+              accessibilityRole="button"
+              style={s.explanationBtn}
+              onPress={() => {
+                AsyncStorage.setItem('govpass_scan_explained', 'true').catch(() => {});
+                setShowExplanation(false);
+              }}
+            >
+              <Ionicons name="camera-outline" size={18} color="#FFFFFF" />
+              <Text style={s.explanationBtnText}>Start Scanning</Text>
+            </PressableScale>
+          </View>
+        </Reanimated.View>
+      )}
+
       <Toast {...toast} onHide={hideToast} />
     </View>
   );
@@ -393,4 +439,14 @@ const s = StyleSheet.create({
   permSub: { color: '#94A3B8', fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 32 },
   permBtn: { backgroundColor: '#1E40AF', paddingVertical: 15, paddingHorizontal: 40, borderRadius: 12 },
   permBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  explanationOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.9)', alignItems: 'center', justifyContent: 'flex-end', zIndex: 100, paddingBottom: 40, paddingHorizontal: 24 },
+  explanationCard: { backgroundColor: '#0F172A', borderRadius: 24, padding: 28, width: '100%', borderWidth: 1, borderColor: '#1E40AF40', gap: 16 },
+  explanationIcon: { width: 64, height: 64, borderRadius: 20, backgroundColor: '#1E40AF18', alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
+  explanationTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '800', textAlign: 'center' },
+  explanationSub: { color: '#94A3B8', fontSize: 14, textAlign: 'center', lineHeight: 21 },
+  explanationPoints: { gap: 10 },
+  explanationPoint: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  explanationPointText: { color: '#CBD5E1', fontSize: 14, flex: 1 },
+  explanationBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#1E40AF', paddingVertical: 15, borderRadius: 14, marginTop: 4 },
+  explanationBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
 });
