@@ -18,7 +18,7 @@ function hexToRgba(hex: string, alpha: number): string {
 export default function GradientCard({
   children,
   style,
-  color = '#6366F1',
+  color = '#1D4ED8',
   padding = 16,
 }: Props) {
   return (

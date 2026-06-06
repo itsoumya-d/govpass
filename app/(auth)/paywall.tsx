@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import Purchases, { PurchasesPackage } from 'react-native-purchases';
 import { useToast } from '@/lib/useToast';
 import Toast from '@/components/Toast';
+import { analytics, Events } from '@/lib/analytics';
 
 const PRIMARY = '#1D4ED8';
 const PRIMARY_BG = '#DBEAFE';
@@ -42,6 +43,8 @@ export default function PaywallScreen() {
         }
       })
       .catch(() => {});
+    // Track paywall shown
+    analytics.track(Events.PAYWALL_SHOWN, { app: 'govpass' });
     return () => pulse.stop();
   }, []);
 
@@ -61,6 +64,12 @@ export default function PaywallScreen() {
       }
       const { customerInfo } = await Purchases.purchasePackage(pkg);
       if (customerInfo.entitlements.active['pro'] || Object.keys(customerInfo.entitlements.active).length > 0) {
+        const entitlement = customerInfo.entitlements.active['pro'];
+        if (entitlement?.periodType === 'TRIAL') {
+          analytics.track(Events.TRIAL_STARTED, { app: 'govpass', plan: selectedPlan });
+        } else {
+          analytics.track(Events.SUBSCRIBED, { app: 'govpass', plan: selectedPlan });
+        }
         router.replace('/(tabs)/');
       }
     } catch (e: unknown) {
@@ -128,6 +137,15 @@ export default function PaywallScreen() {
                 <Text style={s.featureText}>{t(`paywall.feature${i + 1}`)}</Text>
               </View>
             ))}
+            {/* K-014: Free tier note — eligibility check is always free */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 }}>
+              <View style={[s.featureIcon, { backgroundColor: '#ECFDF5' }]}>
+                <Ionicons name="checkmark-circle" size={15} color="#059669" />
+              </View>
+              <Text style={[s.featureText, { color: '#059669' }]}>
+                Eligibility check always free — upgrade for history & priority results
+              </Text>
+            </View>
           </View>
 
           <View style={s.plans}>

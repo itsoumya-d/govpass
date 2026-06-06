@@ -63,4 +63,26 @@ export const Events = {
   SUBSCRIPTION_STARTED: 'subscription_started',
   SUBSCRIPTION_CANCELLED: 'subscription_cancelled',
   ERROR_OCCURRED: 'error_occurred',
+  // GovPass-specific
+  APP_OPENED: 'App Opened',
+  SCREEN_VIEWED: 'Screen Viewed',
+  ELIGIBILITY_CHECKED: 'Eligibility Checked',
+  APPLICATION_SUBMITTED: 'Application Submitted',
+  DOCUMENT_UPLOADED: 'Document Uploaded',
+  PAYWALL_SHOWN: 'Paywall Shown',
+  TRIAL_STARTED: 'Trial Started',
+  SUBSCRIBED: 'Subscribed',
 } as const;
+
+// Named function exports for reference-pattern compatibility
+export function track(event: string, properties?: Record<string, unknown>) {
+  analytics.track(event, properties);
+}
+
+export function identify(userId: string, traits?: Record<string, unknown>) {
+  analytics.identify(userId, traits);
+}
+
+export function screen(name: string, properties?: Record<string, unknown>) {
+  analytics.screen(name, properties);
+}

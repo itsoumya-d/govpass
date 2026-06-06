@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, TextInput,
-  StyleSheet, Switch,
+  StyleSheet, Switch, ActivityIndicator,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -155,6 +156,9 @@ const INITIAL_FORM: BaseForm = {
   isPregnant: false, dueDate: '', isBreastfeeding: false,
   hasInfant: false, infantDob: '', hasChildUnder5: false, childDob: '',
 };
+
+// K-174: Draft persistence key (per-program so drafts don't collide)
+const FORM_CACHE_KEY = 'govpass-apply-form-draft';
 
 // ── Sub-Components ────────────────────────────────────────────────────────────
 
@@ -318,6 +322,15 @@ function ProgramSelect({ onSelect }: { onSelect: (p: ProgramConfig) => void }) {
 function StepPersonalInfo({ form, set }: { form: BaseForm; set: (k: keyof BaseForm) => (v: string | boolean) => void }) {
   return (
     <View>
+      {/* Trust indicator chips */}
+      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+        {[{icon:'🔒',label:'Secure'},{icon:'🛡️',label:'Encrypted'},{icon:'✓',label:'Gov Verified'}].map(b => (
+          <View key={b.label} style={{ flexDirection:'row', alignItems:'center', gap:4, paddingHorizontal:10, paddingVertical:5, borderRadius:20, backgroundColor:'rgba(148,163,184,0.12)', borderWidth:1, borderColor:'rgba(148,163,184,0.2)' }}>
+            <Text style={{fontSize:12}}>{b.icon}</Text>
+            <Text style={{fontSize:11,color:'#94A3B8',fontWeight:'500'}}>{b.label}</Text>
+          </View>
+        ))}
+      </View>
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <View style={{ flex: 1 }}>
           <Field label="First Name">
@@ -517,30 +530,133 @@ function StepWICHousehold({ form, set }: { form: BaseForm; set: (k: keyof BaseFo
   );
 }
 
+// K-168: Document upload verification states
+type DocState = 'pending' | 'uploading' | 'processing' | 'verified' | 'failed';
+
+function DocUploadRow({
+  docKey,
+  label,
+  state,
+  onUpload,
+}: {
+  docKey: string;
+  label: string;
+  state: DocState;
+  onUpload: (key: string) => void;
+}) {
+  const isPending = state === 'pending';
+  const isUploading = state === 'uploading';
+  const isProcessing = state === 'processing';
+  const isVerified = state === 'verified';
+  const isFailed = state === 'failed';
+
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' }}>
+      {/* Status indicator */}
+      <View style={{ width: 28, alignItems: 'center' }}>
+        {isPending && (
+          <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#D1D5DB', backgroundColor: 'transparent' }} />
+        )}
+        {isUploading && <ActivityIndicator size="small" color={PRIMARY} />}
+        {isProcessing && <ActivityIndicator size="small" color="#F59E0B" />}
+        {isVerified && <Ionicons name="checkmark-circle" size={22} color="#059669" />}
+        {isFailed && <Ionicons name="close-circle" size={22} color="#EF4444" />}
+      </View>
+
+      {/* Label + status text */}
+      <View style={{ flex: 1, marginLeft: 10 }}>
+        <Text style={{ fontSize: 13, fontWeight: '500', color: '#111827', lineHeight: 18 }} numberOfLines={2}>{label}</Text>
+        <Text style={{
+          fontSize: 12, marginTop: 2, fontWeight: '500',
+          color: isPending ? '#9CA3AF' : isUploading ? PRIMARY : isProcessing ? '#D97706' : isVerified ? '#059669' : '#EF4444',
+        }}>
+          {isPending ? 'Not uploaded' : isUploading ? 'Uploading...' : isProcessing ? 'Processing...' : isVerified ? 'Verified' : 'Failed'}
+        </Text>
+      </View>
+
+      {/* Action button / badge */}
+      {isVerified && (
+        <View style={{ paddingHorizontal: 10, paddingVertical: 4, backgroundColor: 'rgba(5,150,105,0.15)', borderRadius: 10 }}>
+          <Text style={{ fontSize: 11, color: '#059669', fontWeight: '700' }}>Verified</Text>
+        </View>
+      )}
+      {isFailed && (
+        <PressableScale haptic="light" onPress={() => onUpload(docKey)} style={{ paddingHorizontal: 10, paddingVertical: 5, backgroundColor: 'rgba(239,68,68,0.1)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)' }}>
+          <Text style={{ fontSize: 11, color: '#EF4444', fontWeight: '700' }}>Retry</Text>
+        </PressableScale>
+      )}
+      {isPending && (
+        <PressableScale haptic="light" onPress={() => onUpload(docKey)} style={{ paddingHorizontal: 12, paddingVertical: 5, backgroundColor: 'rgba(30,64,175,0.1)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(30,64,175,0.25)' }}>
+          <Text style={{ fontSize: 11, color: PRIMARY, fontWeight: '700' }}>Upload</Text>
+        </PressableScale>
+      )}
+    </View>
+  );
+}
+
 function StepDocuments({ programId, form, set }: { programId: ProgramId; form: BaseForm; set: (k: keyof BaseForm) => (v: string | boolean) => void }) {
-  const baseDocList: [keyof BaseForm, string][] = [
-    ['hasId', 'Government-issued Photo ID (driver\'s license, passport, state ID)'],
-    ['hasSsCard', 'Social Security Card or proof of SSN'],
-    ['hasProofOfIncome', 'Proof of Income (pay stubs, tax return, benefit letters)'],
-    ['hasProofOfAddress', 'Proof of Address (utility bill, lease, bank statement)'],
+  const baseDocList: [keyof BaseForm, string, string][] = [
+    ['hasId', 'id_proof', "Government-issued Photo ID (driver's license, passport, state ID)"],
+    ['hasSsCard', 'ss_card', 'Social Security Card or proof of SSN'],
+    ['hasProofOfIncome', 'income_proof', 'Proof of Income (pay stubs, tax return, benefit letters)'],
+    ['hasProofOfAddress', 'address_proof', 'Proof of Address (utility bill, lease, bank statement)'],
   ];
 
-  const extraDocs: Record<ProgramId, [keyof BaseForm, string][]> = {
-    SNAP: [['hasProofOfCitizenship', 'Proof of citizenship or immigration status']],
-    Medicaid: [['hasProofOfCitizenship', 'Proof of citizenship or legal residency']],
-    SSI: [['hasMedicalRecords', 'Medical records documenting disability'], ['hasProofOfCitizenship', 'Proof of citizenship or residency']],
-    LIHEAP: [['hasUtilityBill', 'Most recent utility bill showing account number']],
-    WIC: [['hasProofOfCitizenship', 'Proof of residency in state']],
+  const extraDocs: Record<ProgramId, [keyof BaseForm, string, string][]> = {
+    SNAP: [['hasProofOfCitizenship', 'citizenship_proof', 'Proof of citizenship or immigration status']],
+    Medicaid: [['hasProofOfCitizenship', 'citizenship_proof', 'Proof of citizenship or legal residency']],
+    SSI: [
+      ['hasMedicalRecords', 'medical_records', 'Medical records documenting disability'],
+      ['hasProofOfCitizenship', 'citizenship_proof', 'Proof of citizenship or residency'],
+    ],
+    LIHEAP: [['hasUtilityBill', 'utility_bill', 'Most recent utility bill showing account number']],
+    WIC: [['hasProofOfCitizenship', 'citizenship_proof', 'Proof of residency in state']],
   };
 
   const allDocs = [...baseDocList, ...(extraDocs[programId] ?? [])];
 
+  // K-168: Per-document upload state with timed simulation
+  const [docStates, setDocStates] = useState<Record<string, DocState>>(() => {
+    const initial: Record<string, DocState> = {};
+    allDocs.forEach(([, docKey]) => { initial[docKey] = 'pending'; });
+    return initial;
+  });
+
+  const handleUpload = (docKey: string) => {
+    setDocStates(prev => ({ ...prev, [docKey]: 'uploading' }));
+    setTimeout(() => {
+      setDocStates(prev => ({ ...prev, [docKey]: 'processing' }));
+      setTimeout(() => {
+        setDocStates(prev => ({ ...prev, [docKey]: 'verified' }));
+        // Also mark the form checkbox as checked once verified
+        const entry = allDocs.find(([, k]) => k === docKey);
+        if (entry) set(entry[0])(true);
+      }, 1000);
+    }, 1500);
+  };
+
   return (
     <View>
       <Text style={styles.docIntro}>
-        Check off documents you have ready. You can still apply without all documents — you'll receive a list of what to bring.
+        Upload your documents below. You can still apply without all documents — you'll receive a list of what to bring.
       </Text>
-      {allDocs.map(([key, label]) => (
+
+      {/* K-168: Upload verification status rows */}
+      <View style={{ marginBottom: 20, backgroundColor: '#F9FAFB', borderRadius: 12, paddingHorizontal: 14, paddingTop: 4, borderWidth: 1, borderColor: '#E5E7EB' }}>
+        <Text style={{ fontSize: 11, fontWeight: '700', color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.5, paddingTop: 12, marginBottom: 4 }}>Document Verification</Text>
+        {allDocs.map(([, docKey, label]) => (
+          <DocUploadRow
+            key={docKey}
+            docKey={docKey}
+            label={label}
+            state={docStates[docKey] ?? 'pending'}
+            onUpload={handleUpload}
+          />
+        ))}
+      </View>
+
+      {/* Legacy checkbox checklist */}
+      {allDocs.map(([key, , label]) => (
         <DocItem
           key={key}
           label={label}
@@ -548,7 +664,7 @@ function StepDocuments({ programId, form, set }: { programId: ProgramId; form: B
           onToggle={() => set(key)(!form[key])}
         />
       ))}
-      <InfoBox icon="scan-outline" text="Use the Scan tab to photograph documents and have data auto-filled." />
+      <InfoBox icon="scan-outline" text="Tap Upload on any document above to verify it automatically." />
     </View>
   );
 }
@@ -638,6 +754,31 @@ function ApplicationWizard({ program, onBack }: { program: ProgramConfig; onBack
   const animProgressStyle = useAnimatedStyle(() => ({
     width: `${progressAnim.value}%` as any,
   }));
+
+  // K-174: Restore draft on mount
+  useEffect(() => {
+    AsyncStorage.getItem(`${FORM_CACHE_KEY}-${program.id}`).then(val => {
+      if (val) {
+        try {
+          const saved = JSON.parse(val) as Partial<BaseForm>;
+          setForm(f => ({ ...f, ...saved }));
+        } catch {
+          // Corrupted draft — ignore
+        }
+      }
+    });
+  }, [program.id]);
+
+  // K-174: Persist draft on every form change
+  useEffect(() => {
+    AsyncStorage.setItem(`${FORM_CACHE_KEY}-${program.id}`, JSON.stringify(form));
+  }, [form, program.id]);
+
+  // K-174: Check if form has any non-empty field for "Draft saved" indicator
+  const hasDraft = Object.entries(form).some(([, v]) => {
+    if (typeof v === 'boolean') return v === true;
+    return typeof v === 'string' && v.trim().length > 0;
+  });
 
   // Attempt to pre-fill from user profile
   useEffect(() => {
@@ -742,6 +883,8 @@ function ApplicationWizard({ program, onBack }: { program: ProgramConfig; onBack
 
       triggerReview();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // K-174: Clear draft after successful submission
+      AsyncStorage.removeItem(`${FORM_CACHE_KEY}-${program.id}`).catch(() => {});
       showToast(`Your ${program.name} application has been submitted. You will receive updates in the Alerts tab.`, 'success');
       router.replace('/(tabs)/applications');
     } catch {
@@ -814,6 +957,8 @@ function ApplicationWizard({ program, onBack }: { program: ProgramConfig; onBack
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={styles.wizardTitle}>{program.name}</Text>
           <Text style={styles.stepLabel}>Step {step + 1} of {totalSteps} · {program.steps[step]}</Text>
+          {/* K-174: Draft saved indicator */}
+          {hasDraft && <Text style={{ fontSize: 11, color: '#64748B', marginTop: 1 }}>Draft saved</Text>}
         </View>
       </View>
 

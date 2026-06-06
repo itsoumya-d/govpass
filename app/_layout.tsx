@@ -1,4 +1,3 @@
-import '../lib/i18n';
 import { initI18n } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import { Linking, Platform, Text, useColorScheme, View } from 'react-native';
@@ -22,6 +21,8 @@ import PressableScale from '@/components/PressableScale';
 initI18n();
 initSentry();
 import '../global.css';
+import Purchases, { LOG_LEVEL } from 'react-native-purchases';
+import { analytics, Events } from '@/lib/analytics';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -86,9 +87,27 @@ export default function RootLayout() {
       } catch (e) {
         console.warn('[push] Token registration failed:', e);
       }
+      // K-173: Application status change push notifications
+      // When a user's application status changes on the backend, the server should call:
+      //   Supabase Edge Function → Expo Push API → EXPO_PUSH_TOKEN stored in profiles.expo_push_token
+      // Notification payload: { title: 'Application Update', body: 'Your SNAP application status changed to: Approved', data: { screen: '/(tabs)/' } }
+      // On notification tap: navigate to home screen (already handled in this file via notificationResponse useEffect)
     }
     registerForPushNotifications();
     Notifications.setBadgeCountAsync(0).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    // RevenueCat + PostHog init
+    const rcKey = Platform.select({
+      ios: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY,
+      android: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY,
+    });
+    if (rcKey) {
+      if (__DEV__) Purchases.setLogLevel(LOG_LEVEL.DEBUG);
+      Purchases.configure({ apiKey: rcKey });
+    }
+    analytics.track(Events.APP_OPENED, { app: 'govpass', platform: Platform.OS });
   }, []);
 
   useEffect(() => {
@@ -96,12 +115,26 @@ export default function RootLayout() {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      // Identity linking with RevenueCat + PostHog
+      if (session?.user) {
+        analytics.identify(session.user.id, { email: session.user.email });
+        Purchases.logIn(session.user.id).catch(() => {});
+      } else {
+        Purchases.logOut().catch(() => {});
+      }
     });
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
+      // Identity linking with RevenueCat + PostHog
+      if (session?.user) {
+        analytics.identify(session.user.id, { email: session.user.email });
+        Purchases.logIn(session.user.id).catch(() => {});
+      } else {
+        Purchases.logOut().catch(() => {});
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -138,8 +171,8 @@ export default function RootLayout() {
     return (
       <View className="flex-1 items-center justify-center bg-white dark:bg-gray-950">
         <View className="items-center gap-4 p-8">
-          <View className="h-20 w-20 rounded-full bg-[#6366F1]/10 items-center justify-center">
-            <Ionicons name="lock-closed" size={36} color="#6366F1" />
+          <View className="h-20 w-20 rounded-full bg-[#1D4ED8]/10 items-center justify-center">
+            <Ionicons name="lock-closed" size={36} color="#1D4ED8" />
           </View>
           <Text className="text-xl font-bold text-gray-900 dark:text-white">App Locked</Text>
           <Text className="text-sm text-gray-500 dark:text-gray-400 text-center">
@@ -151,7 +184,7 @@ export default function RootLayout() {
               const success = await authenticateWithBiometrics('Authenticate to access the app');
               if (success) setBiometricLocked(false);
             }}
-            className="mt-2 px-6 py-3 rounded-xl bg-[#6366F1]"
+            className="mt-2 px-6 py-3 rounded-xl bg-[#1D4ED8]"
           >
             <Text className="text-white font-semibold text-base">Unlock</Text>
           </PressableScale>

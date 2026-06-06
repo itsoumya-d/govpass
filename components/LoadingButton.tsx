@@ -15,7 +15,7 @@ interface LoadingButtonProps {
 }
 
 export default function LoadingButton({
-  onPress, loading = false, disabled = false, label, loadingLabel, primaryColor = '#6366F1', style, textStyle, haptic = 'medium',
+  onPress, loading = false, disabled = false, label, loadingLabel, primaryColor = '#1D4ED8', style, textStyle, haptic = 'medium',
 }: LoadingButtonProps) {
   const isDisabled = loading || disabled;
 

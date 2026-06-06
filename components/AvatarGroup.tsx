@@ -22,7 +22,7 @@ export function AvatarGroup({ avatars, max = 4, size = 36, style }: AvatarGroupP
         return (
           <View key={avatar.id} style={[styles.avatarWrapper, { width: size, height: size, borderRadius: size / 2, marginLeft: i === 0 ? 0 : -overlap, zIndex: visible.length - i }]}>
             {avatar.imageUrl ? (
-              <Image source={{ uri: avatar.imageUrl }} style={{ width: size, height: size, borderRadius: size / 2 }} />
+              <Image source={{ uri: avatar.imageUrl }} style={{ width: size, height: size, borderRadius: size / 2 }} resizeMode="cover" />
             ) : (
               <View style={[styles.initialsCircle, { width: size, height: size, borderRadius: size / 2, backgroundColor: bg }]}>
                 <Text style={[styles.initials, { fontSize: size * 0.35 }]}>{getInitials(avatar.name)}</Text>

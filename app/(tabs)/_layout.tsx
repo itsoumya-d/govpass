@@ -1,9 +1,19 @@
-import { Tabs } from 'expo-router';
+import { useEffect } from 'react';
+import { Tabs, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
 import AnimatedTabIcon from '@/components/AnimatedTabIcon';
+import { screen } from '@/lib/analytics';
+
+function ScreenTracker() {
+  const pathname = usePathname();
+  useEffect(() => {
+    screen(pathname);
+  }, [pathname]);
+  return null;
+}
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -39,6 +49,7 @@ export default function TabLayout() {
         tabPress: () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light),
       }}
     >
+      <ScreenTracker />
       <Tabs.Screen
         name="index"
         options={{
@@ -96,6 +107,7 @@ export default function TabLayout() {
       />
 
       {/* Hidden tabs — accessible via stack navigation */}
+      {/* K-172: scan tab hidden — document scanning moved inline to Apply flow */}
       <Tabs.Screen name="scan" options={{ href: null }} />
       <Tabs.Screen name="alerts" options={{ href: null }} />
     </Tabs>

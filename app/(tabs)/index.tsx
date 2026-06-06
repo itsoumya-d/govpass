@@ -190,6 +190,69 @@ function AnimatedProgressBar({ progress, color }: { progress: number; color: str
   );
 }
 
+// Application status timeline — Mercury pattern
+const APP_STEPS = [
+  { label: 'Application Submitted', done: true },
+  { label: 'Under Review', done: false, active: true },
+  { label: 'Decision Made', done: false },
+  { label: 'Benefits Active', done: false },
+];
+
+function ApplicationTimeline() {
+  return (
+    <View style={{ marginHorizontal: 20, padding: 16, backgroundColor: '#2C2C2E', borderRadius: 16, borderWidth: 1, borderColor: '#1D4ED830', marginBottom: 20 }}>
+      <Text style={{ fontSize: 11, color: '#94A3B8', fontWeight: '600', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 12 }}>Application Status</Text>
+      {APP_STEPS.map((step, i) => (
+        <View key={step.label} style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+          <View style={{ alignItems: 'center', marginRight: 12, width: 20 }}>
+            <View style={{
+              width: 20, height: 20, borderRadius: 10,
+              backgroundColor: step.done ? '#1D4ED8' : step.active ? '#1D4ED820' : '#3A3A3C',
+              borderWidth: step.active ? 2 : 0, borderColor: '#1D4ED8',
+              alignItems: 'center', justifyContent: 'center',
+            }}>
+              {step.done && <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>✓</Text>}
+              {step.active && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#1D4ED8' }} />}
+            </View>
+            {i < APP_STEPS.length - 1 && <View style={{ width: 2, height: 20, backgroundColor: step.done ? '#1D4ED8' : '#3A3A3C', marginTop: 2 }} />}
+          </View>
+          <Text style={{
+            fontSize: 13, fontWeight: step.active ? '700' : '500',
+            color: step.active ? '#FFFFFF' : step.done ? '#94A3B8' : '#636366',
+            paddingTop: 1, paddingBottom: 22,
+          }}>{step.label}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+const PENDING_ACTIONS = [
+  { num: 1, title: 'Upload Government ID', desc: 'Required for identity verification', done: false },
+  { num: 2, title: 'Verify Your Address', desc: 'Confirm your current residence', done: true },
+  { num: 3, title: 'Submit Income Documents', desc: 'Upload recent pay stubs or tax returns', done: false },
+];
+
+function ActionCards() {
+  return (
+    <View style={{ marginHorizontal: 20, gap: 10, marginBottom: 20 }}>
+      <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF', marginBottom: 4 }}>Required Actions</Text>
+      {PENDING_ACTIONS.filter(a => !a.done).map(action => (
+        <PressableScale key={action.num} haptic="light" style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#2C2C2E', padding: 14, borderRadius: 14, borderWidth: 1, borderColor: action.done ? '#22C55E30' : '#1D4ED830', gap: 14 }}>
+          <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#1D4ED820', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#1D4ED840' }}>
+            <Text style={{ color: '#1D4ED8', fontWeight: '700', fontSize: 14 }}>{action.num}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 14 }}>{action.title}</Text>
+            <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 2 }}>{action.desc}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color="#64748B" />
+        </PressableScale>
+      ))}
+    </View>
+  );
+}
+
 export default function HomeScreen() {
   const { t } = useTranslation();
   const { user } = useAuthStore();
@@ -264,6 +327,45 @@ export default function HomeScreen() {
             </PressableScale>
           </Animated.View>
         )}
+
+        {/* Application Status Timeline */}
+        <ApplicationTimeline />
+
+        {/* K-169: Your Benefits Summary Card */}
+        {(() => {
+          const totalMonthly = Math.round(
+            programs.reduce((sum, p) => sum + (p.annual_value ?? p.max_benefit_annual ?? 0) / 12, 0)
+          );
+          const eligibleCount = programs.filter(p => p.eligibility_status === 'eligible').length;
+          return (
+            <Animated.View entering={FadeInDown.duration(420).delay(120)} style={{ backgroundColor: '#1E40AF', borderRadius: 16, padding: 18, marginHorizontal: 16, marginBottom: 16 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <Text style={{ fontSize: 18 }}>💰</Text>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#BFDBFE', letterSpacing: 0.3 }}>Your Estimated Benefits</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, marginBottom: 4 }}>
+                <Text style={{ fontSize: 32, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.5 }}>
+                  ${totalMonthly.toLocaleString()}
+                </Text>
+                <Text style={{ fontSize: 15, color: '#BFDBFE', fontWeight: '500' }}>/mo</Text>
+                <Text style={{ fontSize: 14, color: '#BFDBFE', marginLeft: 4 }}>•</Text>
+                <Text style={{ fontSize: 14, color: '#BFDBFE', fontWeight: '500' }}>{eligibleCount} programs</Text>
+              </View>
+              <PressableScale
+                haptic="light"
+                accessibilityRole="button"
+                accessibilityLabel="See benefits details"
+                onPress={() => router.push('/(tabs)/eligibility')}
+                style={{ alignSelf: 'flex-start', marginTop: 6, paddingVertical: 6, paddingHorizontal: 14, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 20 }}
+              >
+                <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700' }}>See Details →</Text>
+              </PressableScale>
+            </Animated.View>
+          );
+        })()}
+
+        {/* Required Actions */}
+        <ActionCards />
 
         {/* Benefits Summary Card */}
         <Animated.View entering={FadeInDown.duration(450).delay(150)}>
@@ -427,6 +529,56 @@ export default function HomeScreen() {
             );
           })
         )}
+
+        {/* K-170: Payment History — stub data, replace with real API when available */}
+        {(() => {
+          const PAYMENT_HISTORY = [
+            { id: '1', program: 'SNAP', amount: 280, date: '2026-06-01', status: 'paid' },
+            { id: '2', program: 'Medicaid', amount: 0, date: '2026-05-15', status: 'processing' },
+            { id: '3', program: 'Housing', amount: 1200, date: '2026-05-01', status: 'paid' },
+          ] as const;
+          return (
+            <View style={{ marginHorizontal: 16, marginBottom: 20 }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 12 }}>Recent Payments</Text>
+              <View style={{ backgroundColor: '#2C2C2E', borderRadius: 14, overflow: 'hidden' }}>
+                {PAYMENT_HISTORY.map((p, i) => {
+                  const isPaid = p.status === 'paid';
+                  return (
+                    <View
+                      key={p.id}
+                      style={{
+                        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+                        paddingHorizontal: 14, paddingVertical: 13,
+                        borderBottomWidth: i < PAYMENT_HISTORY.length - 1 ? 1 : 0,
+                        borderBottomColor: '#38383A',
+                      }}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#FFFFFF' }}>{p.program}</Text>
+                        <Text style={{ fontSize: 12, color: '#94A3B8', marginTop: 2 }}>
+                          {new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </Text>
+                      </View>
+                      <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                        <Text style={{ fontSize: 15, fontWeight: '700', color: isPaid ? '#059669' : '#D97706' }}>
+                          {isPaid ? `$${p.amount.toLocaleString()}` : '—'}
+                        </Text>
+                        <View style={{
+                          paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
+                          backgroundColor: isPaid ? 'rgba(5,150,105,0.15)' : 'rgba(217,119,6,0.15)',
+                        }}>
+                          <Text style={{ fontSize: 11, fontWeight: '600', color: isPaid ? '#059669' : '#D97706' }}>
+                            {isPaid ? 'Paid' : 'Processing'}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          );
+        })()}
 
         {/* Active Applications */}
         <View style={styles.sectionHeader}>
