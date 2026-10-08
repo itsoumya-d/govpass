@@ -123,8 +123,13 @@ export async function processQueue(
 
   // Save updated retry counts for failed operations
   if (failed > 0) {
+    const retryCounts = new Map(queue.map((op) => [op.id, op.retries]));
     const remaining = await getQueue();
-    await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(remaining));
+    const updated = remaining.map((op) => ({
+      ...op,
+      retries: retryCounts.get(op.id) ?? op.retries,
+    }));
+    await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(updated));
   }
 
   return { synced, failed };
