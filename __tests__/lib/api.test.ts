@@ -1,56 +1,55 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 
-const mockSelect = jest.fn().mockReturnThis();
-const mockInsert = jest.fn().mockReturnThis();
-const mockUpdate = jest.fn().mockReturnThis();
-const mockDelete = jest.fn().mockReturnThis();
-const mockEq = jest.fn().mockReturnThis();
-const mockOrder = jest.fn().mockReturnThis();
-const mockLimit = jest.fn().mockReturnThis();
-const mockSingle = jest.fn().mockResolvedValue({ data: null, error: null } as never);
+jest.mock('@/lib/supabase', () => {
+  const select = jest.fn().mockReturnThis();
+  const insert = jest.fn().mockReturnThis();
+  const update = jest.fn().mockReturnThis();
+  const del = jest.fn().mockReturnThis();
+  const eq = jest.fn().mockReturnThis();
+  const order = jest.fn().mockReturnThis();
+  const limit = jest.fn().mockReturnThis();
+  const range = jest.fn().mockReturnThis();
+  const single = jest.fn().mockResolvedValue({ data: null, error: null } as never);
+  const invoke = jest.fn().mockResolvedValue({ data: {}, error: null } as never);
 
-const mockFunctionsInvoke = jest.fn().mockResolvedValue({ data: {}, error: null } as never);
+  const queryBuilder = {
+    select,
+    insert,
+    update,
+    delete: del,
+    eq,
+    order,
+    limit,
+    range,
+    single,
+  };
 
-jest.mock('@/lib/supabase', () => ({
-  supabase: {
-    from: jest.fn(() => ({
-      select: mockSelect,
-      insert: mockInsert,
-      update: mockUpdate,
-      delete: mockDelete,
-      eq: mockEq,
-      order: mockOrder,
-      limit: mockLimit,
-      single: mockSingle,
-    })),
-    auth: {
-      getUser: jest.fn().mockResolvedValue({
-        data: { user: { id: 'test-user-id' } },
-        error: null,
-      } as never),
+  return {
+    __esModule: true,
+    supabase: {
+      from: jest.fn(() => queryBuilder),
+      auth: {
+        getUser: jest.fn().mockResolvedValue({
+          data: { user: { id: 'test-user-id' } },
+          error: null,
+        } as never),
+      },
+      functions: {
+        invoke,
+      },
     },
-    functions: {
-      invoke: mockFunctionsInvoke,
-    },
-  },
-}));
+  };
+});
+
+import * as api from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 
 describe('govpass API functions', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockSelect.mockReturnThis();
-    mockInsert.mockReturnThis();
-    mockUpdate.mockReturnThis();
-    mockDelete.mockReturnThis();
-    mockEq.mockReturnThis();
-    mockOrder.mockReturnThis();
-    mockLimit.mockReturnThis();
-    mockSingle.mockResolvedValue({ data: null, error: null } as never);
-    mockFunctionsInvoke.mockResolvedValue({ data: {}, error: null } as never);
   });
 
-  it('exports all expected API functions', async () => {
-    const api = await import('@/lib/api');
+  it('exports all expected API functions', () => {
     expect(typeof api.analyzeDocument).toBe('function');
     expect(typeof api.getEligiblePrograms).toBe('function');
     expect(typeof api.getUserApplications).toBe('function');
@@ -58,41 +57,35 @@ describe('govpass API functions', () => {
   });
 
   it('getEligiblePrograms queries programs table with is_active filter', async () => {
-    const { getEligiblePrograms } = await import('@/lib/api');
-    const { supabase } = await import('@/lib/supabase');
-
-    await getEligiblePrograms();
+    await api.getEligiblePrograms();
 
     expect(supabase.from).toHaveBeenCalledWith('programs');
-    expect(mockSelect).toHaveBeenCalledWith('*');
-    expect(mockEq).toHaveBeenCalledWith('is_active', true);
-    expect(mockOrder).toHaveBeenCalledWith('name');
+    const qb = (supabase.from as any)();
+    expect(qb.select).toHaveBeenCalledWith('*');
+    expect(qb.eq).toHaveBeenCalledWith('is_active', true);
+    expect(qb.order).toHaveBeenCalledWith('name');
   });
 
   it('getUserApplications calls supabase with correct table and user_id', async () => {
-    const { getUserApplications } = await import('@/lib/api');
-    const { supabase } = await import('@/lib/supabase');
-
-    await getUserApplications('user-123');
+    await api.getUserApplications('user-123');
 
     expect(supabase.from).toHaveBeenCalledWith('applications');
-    expect(mockSelect).toHaveBeenCalledWith('*');
-    expect(mockEq).toHaveBeenCalledWith('user_id', 'user-123');
+    const qb = (supabase.from as any)();
+    expect(qb.select).toHaveBeenCalledWith('*');
+    expect(qb.eq).toHaveBeenCalledWith('user_id', 'user-123');
   });
 
   it('getNotifications calls supabase with correct table, user_id, and limit', async () => {
-    const { getNotifications } = await import('@/lib/api');
-    const { supabase } = await import('@/lib/supabase');
-
-    await getNotifications('user-456');
+    await api.getNotifications('user-456');
 
     expect(supabase.from).toHaveBeenCalledWith('notifications');
-    expect(mockEq).toHaveBeenCalledWith('user_id', 'user-456');
-    expect(mockLimit).toHaveBeenCalledWith(20);
+    const qb = (supabase.from as any)();
+    expect(qb.eq).toHaveBeenCalledWith('user_id', 'user-456');
+    expect(qb.limit).toHaveBeenCalledWith(20);
   });
 
   it('analyzeDocument invokes analyze-image edge function', async () => {
-    mockFunctionsInvoke.mockResolvedValueOnce({
+    (supabase.functions.invoke as any).mockResolvedValueOnce({
       data: {
         documentType: 'tax_return',
         extractedData: { fullName: 'John Doe', income: 45000 },
@@ -101,12 +94,11 @@ describe('govpass API functions', () => {
         summary: 'Tax return analyzed successfully.',
       },
       error: null,
-    } as never);
+    });
 
-    const { analyzeDocument } = await import('@/lib/api');
-    const result = await analyzeDocument('user-123', 'base64data', 'tax_return');
+    const result = await api.analyzeDocument('user-123', 'base64data', 'tax_return');
 
-    expect(mockFunctionsInvoke).toHaveBeenCalledWith('analyze-image', {
+    expect(supabase.functions.invoke).toHaveBeenCalledWith('analyze-image', {
       body: expect.objectContaining({
         imageBase64: 'base64data',
         userId: 'user-123',
@@ -117,12 +109,11 @@ describe('govpass API functions', () => {
   });
 
   it('analyzeDocument throws when edge function returns error', async () => {
-    mockFunctionsInvoke.mockResolvedValueOnce({
+    (supabase.functions.invoke as any).mockResolvedValueOnce({
       data: null,
       error: new Error('Analysis failed'),
-    } as never);
+    });
 
-    const { analyzeDocument } = await import('@/lib/api');
-    await expect(analyzeDocument('user-123', 'base64', 'id')).rejects.toThrow();
+    await expect(api.analyzeDocument('user-123', 'base64', 'id')).rejects.toThrow();
   });
 });
