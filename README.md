@@ -64,3 +64,74 @@ console.log(result.confidenceScore); // 1.0
 
 - Complex multi-state apportionment for remote workers filing non-resident state returns is not yet modeled.
 - Biometric facial matching between ID photos and applicant selfies is delegated to external identity verification providers.
+
+---
+
+## Cross-Language Request Trace Evaluation Engine
+
+The `Cross-Language Request Trace Evaluation Engine` (`lib/request-trace-evaluator.ts`) traces, measures, and audits distributed requests across client browsers, API gateways, microservices, and databases running on TypeScript, Go, Python, and Node runtimes.
+
+### Capabilities
+
+- **Cross-Language Trace Auditing**: Tracks request spans across frontend browsers and backend microservices, recording cross-language execution hops.
+- **Latency & Bottleneck Detection**: Identifies services exceeding SLA latency thresholds or consuming disproportionate processing budgets.
+- **Error Propagation Tracking**: Extracts downstream error states and timeout failures with span IDs and service names.
+- **Compliance & Health Status**: Assigns deterministic audit ratings (`PASS`, `WARN`, `FAIL`) to incoming distributed transactions.
+
+### Runnable Example
+
+```typescript
+import {
+  evaluateRequestTrace,
+  TracePipeline,
+} from '@/lib/request-trace-evaluator';
+
+const pipeline: TracePipeline = {
+  traceId: 'trace-8841',
+  spans: [
+    {
+      spanId: 'span-client-1',
+      serviceName: 'browser_client',
+      runtime: 'typescript',
+      durationMs: 45,
+      status: 'ok',
+    },
+    {
+      spanId: 'span-gw-1',
+      parentSpanId: 'span-client-1',
+      serviceName: 'api_gateway',
+      runtime: 'go',
+      durationMs: 25,
+      status: 'ok',
+    },
+    {
+      spanId: 'span-recon-1',
+      parentSpanId: 'span-gw-1',
+      serviceName: 'reconciliation_service',
+      runtime: 'python',
+      durationMs: 180,
+      status: 'ok',
+    },
+    {
+      spanId: 'span-db-1',
+      parentSpanId: 'span-recon-1',
+      serviceName: 'database_store',
+      runtime: 'node',
+      durationMs: 60,
+      status: 'ok',
+    },
+  ],
+  startTimeMs: 1000,
+  endTimeMs: 1350,
+};
+
+const result = evaluateRequestTrace(pipeline, { slaThresholdMs: 2000 });
+console.log(result.isValid); // true
+console.log(result.crossLanguageHops); // 3
+console.log(result.complianceAuditStatus); // 'PASS'
+```
+
+### Limits and Not Covered Yet
+
+- Kernel-level eBPF network packet tracing is not supported; spans must be instrumented at the application or gateway layer.
+- Trace sampling policies across extremely high-volume streams (>100k requests/sec) require external OpenTelemetry collector aggregation.
